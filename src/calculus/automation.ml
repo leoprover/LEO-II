@@ -14,6 +14,7 @@ open State
 open Main
 open Calculus
 open Str
+module Bytes = String
 
 let rec compose (rl:(cl_clause list -> state -> cl_clause list) list) =
   match rl with
