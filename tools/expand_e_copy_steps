@@ -1,0 +1,9 @@
+#!/bin/bash
+#
+# E uses abbreviated syntax when describing "copy" steps. This transducer
+# will expand it into the full syntax, to avoid my having to hack the parser
+# (or E's proof producer).
+# Nik Sultana, Cambridge University Computer Lab, June 2013
+#
+
+perl -pe 's/^(cnf|fof)(.+), c(.+)\)\.$/$1$2, inference(copy,[status(thm)],[c$3]))./' $@

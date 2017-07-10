@@ -1,0 +1,87 @@
+THE LEO-II System Installation Guide
+(Christoph Benzmueller and Nik Sultana)
+
+
+NOTES:
+  * LEO-II runs under OCaml
+  * It follows the TPTP ATP System Building Conventions
+     ( http://www.cs.miami.edu/~tptp/TPTP/Proposals/SystemBuild.html )
+
+
+LEO-II Installation Instructions:
+ (1) Choose an [installation-directory], e.g. /home/chris/
+ (2) Download latest LEO-II version from
+         http://www.leoprover.org
+     and store it in [installation-directory]
+ (3) Change to the installation directory
+                   cd [installation-directory]
+ (4) Extract the files of the packages
+                   tar xzf leo2-v***.tgz
+ (5) Change to the main source directory of the LEO-II package
+                   cd [installation-directory]/leo2/src
+
+ (6) Run the configuration script -- running "./configure --help" will
+     describe the options available.
+
+ (7) Build a LEO-II executable -- there are different alternatives and
+     each of them should work:
+             - "make" will build an OCaml-bytecode version of LEO-II
+             - "make opt" will build a native version of LEO-II
+             - "make clean" removes generated binaries
+
+     You can obtain a faster-performing binary by sacrificing
+     helpful error messages. For this, use "make opt debug=false".
+
+     To build LEO-II you need to have the ocamlfind utility.
+     Furthermore, building MiniSAT (which is included in the
+     distribution of LEO-II) requires GCC.
+
+     Running these commands will create an executable
+                  [installation-directory]/leo2/bin/leo
+
+ (7) Try the following in case of errors during build
+       - Run "make list_versions" and check if all the version numbers
+         are identical.
+       - Run "make cleaner", and then retry "make", to remove a binary
+         used to speed-up building.
+       - If you have multiple versions of OCaml in your PATH, you
+         can specify which version to use via the --ocamlbindir parameter
+         to the configure script.
+
+
+Enabling the cooperation of LEO-II with at least one First-Order Prover:
+- LEO-II is designed to cooperate with first-order provers. Thus installation
+  of a first order prover is crucial in order to run LEO-II. While LEO-II
+  can cooperate with different first-order provers, we recommend here to
+  install the 'The E Equational Theorem Prover' which is available at
+  http://www4.informatik.tu-muenchen.de/~schulz/WORK/eprover.html
+
+- In the following we assume that the binary for running prover E is available
+  in file
+                   [eprover-directory]/eprover
+- In order to inform LEO-II where it can find this binary for E you need to
+  provide a file
+                   [your-homedirectory]/.leoatprc
+  containing the following entries:
+                   e = [eprover-directory]/eprover
+		   epclextract = [eprover-directory]/epclextract
+
+Running LEO-II in Automatic Mode:
+- To start LEO-II you need to type:
+                  [installation-directory]/leo2/bin/leo
+- Parameters are given in the following sequence:
+                  [installation-directory]/leo2/bin/leo [OPTIONS] [FILE]
+  In order to see which options can be set, run
+                  [installation-directory]/leo2/bin/leo --help
+- Usage examples:
+   [installation-directory]/leo2/bin/leo [installation-directory]/leo2/distrib_examples/BrownSmolka-1.thf --proofoutput 1
+
+   [installation-directory]/leo2/bin/leo -d [installation-directory]/leo2/distrib_examples -f e -t 40
+   (please make sure that you have write permissions for [installation-directory]/leo2/distrib_examples)
+
+   At CASC LEO-II is called as follows:
+   [installation-directory]/leo2/bin/leo --timeout 30 --proofoutput 1 --foatp e \
+     --atp e=[e-directory]/eprover '[problem-file-directory/SET014^4.tptp'
+
+
+Running LEO-II in Interactive Mode is not currently recommended due to several open issues.

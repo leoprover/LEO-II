@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# This is like an anti-grep applied to whole files.
+# It lists the files which don't contain a text sequence.
+#
+# Nik Sultana, Cambridge University Computer Lab, May 2013
+#
+
+if [ "${#@}" -eq 0 ]
+then
+  echo "Example usage: \"${0} conjecture *\" will list all files (present\
+ in the current directory) which lack the string \"conjecture\"."
+  exit 1
+fi
+
+SOUGHT=$1
+
+for FILE in "${@:2}"
+do
+  if [ -f "${FILE}" ]
+  then
+    diff -aq ${FILE} <(grep -Ev ${SOUGHT} ${FILE}) > /dev/null
+    if [ "$?" -eq 0 ]
+    then
+      echo "${FILE}"
+    fi
+  fi
+done

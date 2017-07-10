@@ -1,0 +1,4 @@
+This directory contains scripts which were found to be useful
+when testing LEO-II, analysing its output, transforming proofs, etc.
+The header section of each script file should contain a description
+of what the script does, and how to use it.

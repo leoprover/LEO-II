@@ -1,0 +1,62 @@
+#!/usr/bin/awk -f
+
+# Removes metainfo from Leo2 or E output, leaving the actual proofs.
+# Nik Sultana, Cambridge University Computer Lab, April 2013
+#
+# If a proof is incomplete (i.e., lacks the closing line) then no
+#  part of the proof passes the filter.
+#
+# Example usage:
+#   cat proofs/ALG001\^5.p.out | filter_proof > clean_proofs/ALG001\^5.p.out
+# or
+#   leo -po 1 problems/ALG001\^5.p | filter_proof > clean_proofs/ALG001\^5.p.out
+#
+
+BEGIN {
+  LOOKING_FOR_START = 0;
+  IN_PROOF = 1;
+  ENDED_PROOF = 2;
+
+  if (SOURCE_PROVER == "")
+  {
+    SOURCE_PROVER = "LEO2";
+  }
+
+  proof = "";
+  state = LOOKING_FOR_START;
+}
+
+((SOURCE_PROVER == "LEO2") && /^% SZS output start CNFRefutation$/) ||
+((SOURCE_PROVER == "E") && /^# SZS output start CNFRefutation.$/) {
+  if (state == LOOKING_FOR_START)
+  {
+    state = IN_PROOF;
+  }
+  #FIXME else complain and die
+  next;
+}
+
+((SOURCE_PROVER == "LEO2") && /^% SZS output end CNFRefutation$/) ||
+((SOURCE_PROVER == "E") && /^# SZS output end CNFRefutation.$/) {
+  if (state == IN_PROOF)
+  {
+    state = ENDED_PROOF;
+  }
+  #FIXME else complain and die
+  next;
+}
+
+{
+  if (state == IN_PROOF)
+  {
+    proof = proof $0 "\n";
+  }
+  next;
+}
+
+END {
+  if (state == ENDED_PROOF)
+  {
+    print proof;
+  }
+}

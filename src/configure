@@ -1,0 +1,155 @@
+#!/usr/bin/perl -w
+
+#
+# Very basic configure script for LEO-II.
+# This follows the guidelines given at http://www.cs.miami.edu/~tptp/TPTP/Proposals/SystemBuild.html
+# Eventually could migrate to use autoconf.
+#
+# Nik Sultana, Cambridge University Computer Lab, April 2013
+#
+
+use strict;
+use warnings;
+use Getopt::Long;
+
+my $default_prefix = "/usr/local/";
+my $default_bin_suffix = "bin/";
+my $default_lib_suffix = "lib/";
+my $default_man_suffix = "man/";
+my $default_ocamlbindir = "";
+
+my $makefile_template = "Makefile.pre";
+my $makefile_instance = "Makefile";
+
+sub usage
+{
+  my $status = $_[0];
+
+  print "         Standard options:
+         --help : Print this help.\
+         --bindir=<path> : Specify the directory for executables.\
+         --libdir=<path> : Specify the directory for library files that are needed for execution.\
+         --mandir=<path> : Specify directory for the man pages.\
+         --exec-prefix=<path> : Equivalent to --bindir=<path>/bin --libdir=<path>/lib.\
+         --prefix=<path> : Equivalent to --bindir=<path>/bin --libdir=<path>/lib --mandir=<path>/man.\n\
+         The default is equivalent to --prefix=/usr/local\
+
+         Argument precedence:
+           --bindir/--libdir take precedence over --exec-prefix
+           --exec-prefix takes precedence over --prefix
+           --mandir takes precedence over --prefix
+
+         Nonstandard options:
+         --ocamlbindir=<path> : Specify the directory containing OCaml tool binaries.\
+           There is no default value (i.e., the PATH environment variable is used to
+           find variables at make-time)./\n";
+
+  exit $status;
+}
+
+# Well-formedness check: check that path ends in "/"
+#  (unless the path is allowed to be empty).
+sub ensure_ends_in_slash
+{
+  my $path = $_[0];
+  if ((length($$path) > 0) &&
+      (not (substr ($$path, length($$path) - 1 , 1) eq "/")))
+  {
+    $$path .= "/";
+  }
+  return $$path;
+}
+
+my %opts = ();
+GetOptions("help" => \$opts{help},
+           "bindir=s" => \$opts{bindir},
+           "libdir=s" => \$opts{libdir},
+           "mandir=s" => \$opts{mandir},
+           "exec-prefix=s" => \$opts{exec_prefix},
+           "prefix=s" => \$opts{prefix},
+           "ocamlbindir=s" => \$opts{ocamlbindir})
+    || usage(1);
+
+usage(0) if $opts{help};
+
+if (not (defined $opts{prefix}))
+{
+  $opts{prefix} = $default_prefix;
+}
+else
+{
+  ensure_ends_in_slash(\$opts{prefix});
+}
+
+if (defined $opts{exec_prefix})
+{
+  ensure_ends_in_slash(\$opts{exec_prefix});
+
+  if (not (defined $opts{bindir}))
+  {
+    $opts{bindir} = $opts{exec_prefix} . $default_bin_suffix;
+  }
+
+  if (not (defined $opts{libdir}))
+  {
+    $opts{libdir} = $opts{exec_prefix} . $default_lib_suffix;
+  }
+}
+else
+{
+  if (not (defined $opts{bindir}))
+  {
+    $opts{bindir} = $opts{prefix} . $default_bin_suffix;
+  }
+
+  if (not (defined $opts{libdir}))
+  {
+    $opts{libdir} = $opts{prefix} . $default_lib_suffix;
+  }
+}
+
+if (not (defined $opts{mandir}))
+{
+  $opts{mandir} = $opts{prefix} . $default_man_suffix;
+}
+
+if (not (defined $opts{ocamlbindir}))
+{
+  $opts{ocamlbindir} = $default_ocamlbindir;
+}
+
+#FIXME I'm not trimming whitespace from paths at the moment,
+# and ensure_ends_in_slash can be tricked by giving it a
+# path consisting of " ".
+ensure_ends_in_slash(\$opts{bindir});
+ensure_ends_in_slash(\$opts{libdir});
+ensure_ends_in_slash(\$opts{mandir});
+ensure_ends_in_slash(\$opts{ocamlbindir});
+
+print "bindir = " . $opts{bindir} . "\n";
+print "libdir = " . $opts{libdir} . "\n";
+print "mandir = " . $opts{mandir} . "\n";
+print "ocamlbindir = " . $opts{ocamlbindir} . "\n";
+
+if ((length($opts{bindir}) == 0) ||
+    (length($opts{mandir}) == 0) ||
+    (length($opts{libdir}) == 0))
+{
+  die "Cannot have empty bindir/libdir/mandir."
+}
+
+open INFILE, "<", $makefile_template or die "Could not open " . $makefile_template . "\n";
+open OUTFILE, ">", $makefile_instance or die "Could not open " . $makefile_instance . "\n";
+
+while (<INFILE>)
+{
+  s/^(.+)!BINDIR!(.+)$/$1$opts{bindir}$2/;
+  s/^(.+)!OCAMLBINDIR!(.+)$/$1$opts{ocamlbindir}$2/;
+  print OUTFILE;
+}
+
+close INFILE;
+close OUTFILE;
+
+print "done\n";
+exit 0;

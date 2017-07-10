@@ -1,0 +1,26 @@
+#!/usr/bin/awk -f
+
+# Removes inferences from a proof, leaving the problem spec with
+# two features:
+#   - It is self-contained (i.e., 'include' directives)
+#   - Axioms/definitions not used by Leo2 during the proof
+#     are filtered from the spec.
+#
+# Nik Sultana, Cambridge University Computer Lab, July 2013
+#
+# It would be useful to run the "filter_proof" script before
+# running "filtered_proof", to remove the metadata.
+#
+# Example usage:
+#   cat proofs/ALG001\^5.p.out | filter_proof | filtered_problem > clean_problems/ALG001\^5.p
+# or
+#   leo -po 1 problems/ALG001\^5.p | filter_proof | filtered_problem > clean_problems/ALG001\^5.p.out
+#
+
+/^ *thf\(.+?,type,/ ||
+/^ *thf\(.+?,axiom,/ ||
+/^ *thf\(.+?,definition,/ ||
+/^ *thf\(.+?,conjecture,/ {
+  print $0;
+  next;
+}

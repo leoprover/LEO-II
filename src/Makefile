@@ -1,0 +1,317 @@
+SHELL := /bin/bash
+OCAMLC ?= ocamlc
+OCAMLOPT ?= ocamlopt
+OCAMLDEP ?= ocamldep
+OCAMLDOC ?= ocamldoc
+OCAMLLEX ?= ocamllex
+OCAMLYACC ?= ocamlyacc
+OCAMLMKLIB ?= ocamlmklib
+OCAMLMKTOP ?= ocamlmktop
+
+#On benefit of using native camlp4 see
+#  http://mancoosi.org/~abate/two-simple-tips-speed-ocaml-compilation
+CAMLP4O ?= camlp4o.opt
+CXX ?= g++
+
+#Compiler switches, can be individually toggled from the command line invocation of "make".
+
+SWITCHES=
+
+STATICFLGS=
+ifeq ($(static),true)
+ STATICFLGS=-cclib '-static -dynamic -lz'
+endif
+
+DEBUGFLG=
+ifneq ($(debug),false)
+	SWITCHES=-DDEBUG
+	DEBUGFLG=-g
+endif
+
+ANNOTFLG=
+ifeq ($(annot),true)
+	ANNOTFLG=-annot
+endif
+
+WARN=
+ifeq ($(Wall),true)
+	WARN=-w +A
+endif
+
+#Useful for building toplevel
+ifeq ($(no_main),true)
+	SWITCHES += -DTOPLEVEL
+endif
+
+#Include revision info (only works when in repo)
+ifeq ($(with_rev),true)
+	REV := $(shell svn info | grep Revision | perl -p -e 's/.+: //ge;')
+	SWITCHES += -DREV=$(REV)
+endif
+
+SWITCHES += $(defs)
+
+# All Source Files, ordered with respect to their dependencies:
+SOURCES=datastructure/darray.mli \
+	datastructure/darray.ml \
+	datastructure/util.mli \
+	datastructure/util.ml \
+	datastructure/position.mli  \
+	datastructure/position.ml \
+	datastructure/hol_type.mli \
+	datastructure/hol_type.ml \
+	datastructure/term.mli \
+	datastructure/term.ml \
+	datastructure/signature.mli \
+	datastructure/signature.ml \
+	general/general.ml \
+	datastructure/termset.mli \
+	datastructure/termset.ml \
+	datastructure/substitution.mli \
+	datastructure/substitution.ml \
+	datastructure/orderings.mli \
+	datastructure/orderings.ml \
+	datastructure/termsystem.mli \
+	datastructure/termsystem.ml \
+\
+	datastructure/literal.mli \
+	datastructure/literal.ml \
+	datastructure/clause.mli \
+	datastructure/clause.ml \
+	datastructure/clauseset.mli \
+	datastructure/clauseset.ml \
+	interfaces/minisat/minisatinterface.ml \
+	interfaces/translation/translation_general.ml \
+	interfaces/translation/app_term.ml \
+	interfaces/translation/translation_printing.ml \
+	interfaces/translation/af.ml \
+	datastructure/state.mli \
+	datastructure/state.ml \
+	datastructure/main.ml \
+	interfaces/translation/monotonicity.ml \
+	interfaces/translation/translation.mli \
+	interfaces/translation/translation.ml \
+\
+	calculus/calculus.mli \
+	calculus/calculus.ml \
+	calculus/automation.mli \
+	calculus/automation.ml \
+\
+	parser-hotptp/preprocess.mli \
+	parser-hotptp/preprocess.ml \
+	parser-hotptp/htparser.mly \
+	parser-hotptp/htlexer.mll \
+\
+	interfaces/cmdline.mli \
+	interfaces/cmdline.ml \
+	interfaces/testproblems.ml \
+	interfaces/interactive.mli \
+	interfaces/interactive.ml \
+	interfaces/strategy_scheduling.mli \
+	interfaces/strategy_scheduling.ml
+
+# Camlp4 syntax extensions
+# EXTENSIONS=pa_timed
+
+# All toplevel files:
+TARGETS=toplevel/leo.ml \
+#	test/termset-test.ml \
+# test/parser-test.ml \
+#	test/index-test.ml \
+# test/uni-test.ml \
+#	test/polymorphism-test.ml
+
+MAIN_TARGET=toplevel/leo.ml
+
+# Directories of sources, binaries, documentation and extensions:
+
+SRCDIR=./
+BINDIR=../bin/
+DOCDIR=../doc/html_doc/
+# EXTDIR=./extensions/
+
+SOURCES:=$(addprefix $(SRCDIR),$(SOURCES))
+TARGETS:=$(addprefix $(SRCDIR),$(TARGETS))
+
+# EXT_ENABLE=true
+OPT_P_FLAG=
+
+# ifeq ($(EXT_ENABLE),true)
+# 	EXTENSIONS:=$(addprefix $(EXTDIR),$(addsuffix _enabled.ml,$(EXTENSIONS)))
+# else
+# 	EXTENSIONS:=$(addprefix $(EXTDIR),$(addsuffix _disabled.ml,$(EXTENSIONS)))
+# endif
+
+MAIN_OBJS=$(addsuffix .cmo,$(basename $(filter %.ml %.mll %.mly,$(SOURCES))))
+MAIN_OBJS_OPT=$(addsuffix .cmx,$(basename $(filter %.ml %.mll %.mly,$(SOURCES))))
+
+INCLUDEDIRS=$(sort $(dir $(SOURCES) $(TARGETS)))
+INCLUDES=$(addprefix -I ,$(INCLUDEDIRS))
+
+ifeq ($(extunix),true)
+  OCAML_EXTUNIX:=`ocamlfind query extunix`
+  EXTUNIX_INCLUSION=-I $(OCAML_EXTUNIX) extunix.cma
+  EXTUNIX_INCLUSION_OPT=-I $(OCAML_EXTUNIX) extunix.cmxa
+  SWITCHES += -DEXTUNIX
+else
+  EXTUNIX_INCLUSION=
+  EXTUNIX_INCLUSION_OPT=
+endif
+# PREPROCESS=-pp 'camlp4o -I . $(addsuffix .cmo,$(basename $(EXTENSIONS)))'
+PREPROCESS=-pp "$(CAMLP4O) Camlp4MacroParser.cmxs $(SWITCHES)"
+
+# add other options for ocamlc here
+OCAMLFLAGS=$(ANNOTFLG) $(DEBUGFLG) $(INCLUDES) unix.cma str.cma $(PWD)/interfaces/minisat/dllminisatinterface.so $(EXTUNIX_INCLUSION) $(WARN) $(PREPROCESS)
+# add other options for ocamlopt here
+OCAMLOPTFLAGS=$(ANNOTFLG) $(DEBUGFLG) -inline 0 $(INCLUDES) unix.cmxa str.cmxa $(PWD)/interfaces/minisat/libminisatinterface.a $(EXTUNIX_INCLUSION_OPT) -cclib -lstdc++ $(STATICFLGS) $(PREPROCESS)
+OCAMLDOCFLAGS=$(INCLUDES) -d $(DOCDIR) -html -hide Pervasives
+
+
+# $(addsuffix .cmo,$(basename $(EXTENSIONS))):
+# 	$(OCAMLC) -c -pp 'camlp4o pa_extend.cmo q_MLast.cmo -loc loc' -I +camlp4 $(EXTENSIONS)
+
+# $(addsuffix .cmx,$(basename $(EXTENSIONS))):
+# 	$(OCAMLOPT) -c -pp 'camlp4o pa_extend.cmo q_MLast.cmo -loc loc' -I +camlp4 $(EXTENSIONS)
+
+$(addprefix $(BINDIR),$(basename $(notdir $(TARGETS)))): $(MAIN_OBJS) $(addsuffix .cmo,$(basename $(filter %$(subst $(BINDIR),,$@).ml,$(TARGETS)))) minisatinterfaceLib interfaces/minisat/Ointerface.o
+	mkdir -p $(BINDIR)
+	$(OCAMLC) -o $(BINDIR)$(basename $(notdir $@)) $(OCAMLFLAGS) $(MAIN_OBJS) $(addsuffix .cmo,$(basename $(filter %$(subst $(BINDIR),,$@).ml,$(TARGETS))))
+
+$(addsuffix .opt,$(addprefix $(BINDIR),$(basename $(notdir $(TARGETS))))): $(MAIN_OBJS_OPT) $(addsuffix .cmx,$(basename $(filter %$(subst $(BINDIR),,$(subst .opt,,$@)).ml,$(TARGETS)))) minisatinterfaceLib interfaces/minisat/Ointerface.o
+	mkdir -p $(BINDIR)
+	$(OCAMLOPT) $(OPT_P_FLAG) -o $(addsuffix .opt,$(BINDIR)$(basename $(notdir $@))) $(OCAMLOPTFLAGS) $(MAIN_OBJS_OPT)   $(addsuffix .cmx,$(basename $(filter %$(subst $(BINDIR),,$(subst .opt,,$@)).ml,$(TARGETS))))
+
+
+$(basename $(notdir $(TARGETS))): minisatinterfaceLib interfaces/minisat/Ointerface.o
+	make $(BINDIR)$@
+
+
+# Common rules
+.SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly
+
+.ml.cmo:
+	$(OCAMLC) $(OCAMLFLAGS) -c $<
+
+.mli.cmi:
+	$(OCAMLC) $(OCAMLFLAGS) -c $<
+
+.ml.cmx:
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $<
+
+.mll.cmo:
+	$(OCAMLLEX) $<
+	$(OCAMLC) $(OCAMLFLAGS) -c $(addsuffix .ml,$(basename $<))
+
+.mll.cmx:
+	$(OCAMLLEX) $<
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $(addsuffix .ml,$(basename $<))
+
+.mly.cmo: $(addsuffix .cmo,$(basename $(filter %.mll,$(SOURCES))))
+	$(OCAMLYACC) $<
+	$(OCAMLC) $(OCAMLFLAGS) -c $(addsuffix .mli,$(basename $<))
+	$(OCAMLC) $(OCAMLFLAGS) -c $(addsuffix .ml,$(basename $<))
+
+.mly.cmx: $(addsuffix .cmo,$(basename $(filter %.mll,$(SOURCES))))
+	$(OCAMLYACC) $<
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $(addsuffix .mli,$(basename $<))
+	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $(addsuffix .ml,$(basename $<))
+
+.mly.cmi: $(addsuffix .cmo,$(basename $<))
+
+# Build
+all:
+	make Camlp4MacroParser.cmxs
+	make clean
+	make allmain
+
+#On the need to build this file manually see:
+# http://caml.inria.fr/mantis/print_bug_page.php?bug_id=5378
+Camlp4MacroParser.cmxs:
+	$(OCAMLOPT) -shared -o Camlp4MacroParser.cmxs -I +camlp4/Camlp4Parsers Camlp4MacroParser.cmx
+
+opt:
+	make clean
+	make optmain
+	@mv ../bin/leo.opt ../bin/leo 2> /dev/null
+
+profile:
+	make opt OPT_P_FLAG=-p
+
+install:
+	cp ../bin/leo /usr/local/bin/leo
+
+# allmain: $(addsuffix .cmo,$(basename $(EXTENSIONS))) $(addprefix $(BINDIR),$(basename $(notdir $(TARGETS)))) doc customtop
+# optmain: $(addsuffix .cmx,$(basename $(EXTENSIONS))) $(addsuffix .opt,$(addprefix $(BINDIR),$(basename $(notdir $(TARGETS)))))
+allmain: $(addprefix $(BINDIR),$(basename $(notdir $(TARGETS)))) #doc customtop
+optmain: $(addsuffix .opt,$(addprefix $(BINDIR),$(basename $(notdir $(TARGETS)))))
+
+customtop: $(MAIN_OBJS) $(addsuffix .cmi,$(basename $(MAIN_OBJS))) $(addsuffix .cmi,$(basename $(MAIN_TARGET))) $(addsuffix .cmo,$(basename $(MAIN_TARGET)))
+	$(OCAMLMKTOP) -o customtop unix.cma str.cma $(MAIN_OBJS) $(addsuffix .cmo,$(basename $(MAIN_TARGET)))
+#ocamlmktop -o customtop unix.cma str.cma extunix.cma $(MAIN_OBJS) $(addsuffix .cmo,$(basename $(MAIN_TARGET))) -I $(OCAML_EXTUNIX)
+
+#Minisat interface, from Satallax
+#FIXME compiled files are currently put in source directories, and that pattern is continued here, but it's a bad idea.
+minisatinterfaceLib:  interfaces/minisat/minisatinterface.cmo interfaces/minisat/Ointerface.o
+	$(OCAMLMKLIB) -o interfaces/minisat/minisatinterface ../lib/minisat/core/Solver.o ../lib/minisat/simp/SimpSolver.o interfaces/minisat/Ointerface.o -lstdc++
+interfaces/minisat/dllminisatinterface.so:
+	make minisatinterfaceLib
+interfaces/minisat/libminisatinterface.a:
+	make minisatinterfaceLib
+
+interfaces/minisat/Ointerface.o : interfaces/minisat/Ointerface.cc minisat
+	$(CXX) -c -fPIC -Wall -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS -I../lib/minisat -I"`ocamlc -where`" -o interfaces/minisat/Ointerface.o interfaces/minisat/Ointerface.cc
+
+minisat:
+	cd ../lib/minisat; export MROOT=`pwd`; cd core; make Solver.o; cd ../simp; make SimpSolver.o
+
+clean_minisat:
+	rm ../lib/minisat/simp/SimpSolver.o
+	rm ../lib/minisat/core/Solver.o
+
+# Clean up
+clean:
+	rm -f $(addprefix $(BINDIR),$(basename $(notdir $(TARGETS))))
+	rm -f $(addsuffix .opt,$(addprefix $(BINDIR),$(basename $(notdir $(TARGETS)))))
+	rm -f $(addsuffix *.cm[iox],$(INCLUDEDIRS))
+#	rm -f $(addsuffix *.cm[iox],$(EXTDIR))
+	rm -f $(addsuffix *.o,$(INCLUDEDIRS))
+#	rm -f $(addsuffix *.o,$(EXTDIR))
+	rm -f $(addsuffix .ml,$(basename $(filter %.mll,$(SOURCES))))
+	rm -f $(addsuffix .ml,$(basename $(filter %.mly,$(SOURCES))))
+	rm -f $(addsuffix .mli,$(basename $(filter %.mly,$(SOURCES))))
+	rm -f customtop
+	rm -f .depend
+	rm -f $(addsuffix .annot,$(basename $(SOURCES) $(TARGETS)))
+	rm -f interfaces/minisat/{dllminisatinterface.so,libminisatinterface.a,Ointerface.o}
+
+cleaner:
+	make clean
+	@rm Camlp4MacroParser.cmxs
+
+cleandoc:
+	rm -f $(addsuffix *.html,$(DOCDIR)) $(addsuffix *.css,$(DOCDIR))
+	rmdir $(DOCDIR)
+
+# Documentation generation
+doc: customtop
+	mkdir -p $(DOCDIR)
+	$(OCAMLDOC) $(OCAMLDOCFLAGS) $(addsuffix *.mli,$(INCLUDEDIRS))
+
+# Dependencies
+# .depend: $(addsuffix .cmo,$(basename $(EXTENSIONS)))
+.depend: Camlp4MacroParser.cmxs
+	$(OCAMLDEP) $(INCLUDES) $(PREPROCESS) $(addsuffix *.ml,$(INCLUDEDIRS)) $(addsuffix *.mli,$(INCLUDEDIRS))> .depend
+
+list_versions:
+	@echo "Versions of the OCaml tools used to build LEO-II:"
+	@echo "OCAMLC (currently $(OCAMLC)):"; $(OCAMLC) -vnum
+	@echo "OCAMLOPT (currently $(OCAMLOPT)):"; $(OCAMLOPT) -vnum
+	@echo "OCAMLDEP (currently $(OCAMLDEP)):"; $(OCAMLDEP) -vnum
+	@echo "OCAMLDOC (currently $(OCAMLDOC)):"; $(OCAMLDOC) -vnum
+	@echo "OCAMLLEX (currently $(OCAMLLEX)):"; $(OCAMLLEX) -vnum
+	@echo "OCAMLYACC (currently $(OCAMLYACC)):"; $(OCAMLYACC) -vnum
+	@echo "OCAMLMKLIB (currently $(OCAMLMKLIB)):"; $(OCAMLMKLIB) -vnum
+	@echo "OCAMLMKTOP (currently $(OCAMLMKTOP)):"; $(OCAMLMKTOP) -vnum
+	@echo "CAMLP4O (currently $(CAMLP4O)):"; $(CAMLP4O) -vnum
+
+-include .depend

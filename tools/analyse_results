@@ -1,0 +1,228 @@
+#!/bin/bash
+# Analyse leo_diff's output:
+#  - Counts results from leo_diff's output.
+#  - Checks for any suspicious output.
+#  - Shows jitter (if the same experiment was run on both left and right).
+#  - Compares left and right experiments.
+# This is very primitive, unpolished code.
+# Nik Sultana, January 2013
+#
+# Also, the file might need to be sanitised -- e.g., if -e switch
+# was given to leo_diff you might have "corrupted" data lines,
+# with text from the STDERR chanel.
+
+#By default, we're in counting mode
+MODE="c"
+BATCHES=
+#Config parameters
+PARAMS=
+while getopts "b:p:m:" OPT
+do
+  case "$OPT" in
+    b)
+      BATCHES="$OPTARG"
+      ;;
+    p)
+      PARAMS="$OPTARG"
+      ;;
+    m)
+      MODE="$OPTARG"
+      ;;
+   esac
+done
+
+echo "WARNING: Results shown here might not be precise if the results file had random breaks/text containing error/other messages."
+
+if [ "$MODE" != "c" -a "$MODE" != "s" -a "$MODE" != "j" -a "$MODE" != "k" ]; then
+  echo "Unrecognised mode value: $MODE"
+  echo "Legal values to -m are: c (for counting) or s (for suspicious results) or j (for jitter) or k (for comparing left and right columns)."
+  exit 1
+fi
+
+if [ "$MODE" = "j" ]; then
+  echo "WARNING: Results aren't filtered for 'ignored' statuses (e.g., UNK, (U), TMO, etc), therefore results might include redundant lines."
+fi
+
+shift $(($OPTIND - 1))
+
+NAME=$1
+if [ -z "${NAME}" ]; then
+  echo "Need argument indicating log's prefix, e.g. LOG_current"
+  exit 1
+fi
+
+#This influences whether we look at the problems solved in the
+#left column, right column, both, or neither.
+FOCUS_FILTER=
+FOCUS_FILTER2=
+function set_focus {
+  case $1 in
+    l)
+      FOCUS_FILTER='grep -v '!''
+      FOCUS_FILTER2='grep -vE '^.{128}2''
+      ;;
+    r)
+      FOCUS_FILTER='grep -v '!''
+      FOCUS_FILTER2='grep -vE '^.{128}1''
+      ;;
+    b)
+      FOCUS_FILTER='grep -v '!''
+      FOCUS_FILTER2='cat'
+      ;;
+    n)
+      FOCUS_FILTER='grep '!''
+      FOCUS_FILTER2='cat'
+      ;;
+    *)
+      echo "Unrecognised focus: ${1}"
+      exit 1
+      ;;
+  esac
+}
+
+#FIXME horrible working through side-effects
+#FIXME also, very hacky working through FOCUS_FILTER2 -- would be nicer to flatten command into string before executing.
+DATA=
+function get_log_data_all {
+  DATA=`grep '||' $1 | ${FOCUS_FILTER} | ${FOCUS_FILTER2} | grep -v UNK | grep -v SZS | wc -l`
+}
+function get_log_data_thm {
+  DATA=`grep '||' $1 | ${FOCUS_FILTER} | ${FOCUS_FILTER2} | grep THM | wc -l`
+}
+function get_log_data_uns {
+  DATA=`grep '||' $1 | ${FOCUS_FILTER} | ${FOCUS_FILTER2} | grep UNS | wc -l`
+}
+function get_log_data_sat {
+  DATA=`grep '||' $1 | ${FOCUS_FILTER} | ${FOCUS_FILTER2} | grep SAT | wc -l`
+}
+function get_log_data_csa {
+  DATA=`grep '||' $1 | ${FOCUS_FILTER} | ${FOCUS_FILTER2} | grep CSA | wc -l`
+}
+
+#Problem statuses to work modulo
+IGNORED="grep -vE '(UNK|\(U\)|RSO|TMO|TAU|ERR)'"
+
+function spot_suspicious_results {
+  #Note that this assumes no jitter -- i.e. based on "!"
+  DATA=`grep '||' $1 | grep '!' | eval ${IGNORED}`
+
+  #FIXME next bit is redundant -- might just as well print the thing at source
+  if [ -n "${DATA}" ]; then
+    echo -e "${DATA}"
+  fi
+}
+
+function spot_jitter {
+  DATA=`grep '||' $1 | grep -E '^.{128}1'`
+  if [ -n "${DATA}" ]; then
+    echo -e "one:\n${DATA}"
+  fi
+
+  DATA=`grep '||' $1 | grep -E '^.{128}2'`
+  if [ -n "${DATA}" ]; then
+    echo -e "two:\n${DATA}"
+  fi
+}
+
+if [ -z "${PARAMS}" ]; then
+  echo "WARNING: No -p argument (indicating parameters -- e.g. -p 1780_60s), so the filename argument will be used without extension."
+  FILE="${NAME}"
+else
+  FILE="${NAME}_${PARAMS}"
+fi
+
+function show_file_data {
+  FILE=$1
+  FOCUS=$2
+  set_focus "${FOCUS}"
+  get_log_data_all "${FILE}"
+  echo "ALL: $DATA"
+  get_log_data_thm "${FILE}"
+  echo "THM: $DATA"
+  get_log_data_uns "${FILE}"
+  echo "UNS: $DATA"
+  get_log_data_sat "${FILE}"
+  echo "SAT: $DATA"
+  get_log_data_csa "${FILE}"
+  echo "CSA: $DATA"
+}
+
+if [ -z "${BATCHES}" ]; then
+  echo "handling ${FILE}"
+  case $MODE in
+    c)
+      show_file_data "${FILE}" "b"
+      ;;
+    s)
+      spot_suspicious_results "${FILE}"
+      ;;
+    j)
+      spot_jitter "${FILE}"
+      ;;
+    k)
+      echo "Left column:"
+      show_file_data "${FILE}" "l"
+      echo -e "\nRight column:"
+      show_file_data "${FILE}" "r"
+      ;;
+    *)
+      echo "Unrecognised mode value: ${MODE}"
+      exit 1
+      ;;
+  esac
+else
+  echo "handling prefix ${FILE}"
+  case $MODE in
+    c)
+      set_focus b
+      #FIXME results appear with prefixed "0 +"
+      TOTAL_ALL=0
+      TOTAL_THM=0
+      TOTAL_UNS=0
+      TOTAL_SAT=0
+      TOTAL_CSA=0
+#      for i in {1..${BATCHES}} -- works from version 4 of bash
+      for i in $(seq 1 1 "${BATCHES}")
+      do
+        INDEXEDFILE="${FILE}_B${i}"
+        get_log_data_all "${INDEXEDFILE}"
+        TOTAL_ALL="$TOTAL_ALL + $DATA"
+        get_log_data_thm "${INDEXEDFILE}"
+        TOTAL_THM="$TOTAL_THM + $DATA"
+        get_log_data_uns "${INDEXEDFILE}"
+        TOTAL_UNS="$TOTAL_UNS + $DATA"
+        get_log_data_sat "${INDEXEDFILE}"
+        TOTAL_SAT="$TOTAL_SAT + $DATA"
+        get_log_data_csa "${INDEXEDFILE}"
+        TOTAL_CSA="$TOTAL_CSA + $DATA"
+      done
+      echo "ALL: ${TOTAL_ALL} = $(expr ${TOTAL_ALL})"
+      echo "THM: ${TOTAL_THM} = $(expr ${TOTAL_THM})"
+      echo "UNS: ${TOTAL_UNS} = $(expr ${TOTAL_UNS})"
+      echo "SAT: ${TOTAL_SAT} = $(expr ${TOTAL_SAT})"
+      echo "CSA: ${TOTAL_CSA} = $(expr ${TOTAL_CSA})"
+      ;;
+    s)
+      for i in $(seq 1 1 "${BATCHES}")
+      do
+        INDEXEDFILE="${FILE}_B${i}"
+        spot_suspicious_results "${INDEXEDFILE}"
+      done
+      ;;
+    j)
+      for i in $(seq 1 1 "${BATCHES}")
+      do
+        INDEXEDFILE="${FILE}_B${i}"
+        spot_jitter "${INDEXEDFILE}"
+      done
+      ;;
+    k)
+      echo "Currently this isn't implemented to work in batch mode."
+      exit 1
+      ;;
+    *)
+      echo "Unrecognised mode value: ${MODE}"
+      exit 1
+      ;;
+  esac
+fi

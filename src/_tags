@@ -1,0 +1,4 @@
+true: use_unix
+true: use_str
+true: use_nums
+<**/*.ml> : annot

@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Runs filter_proof on a file.
+# Based on "askleo" script.
+#
+# Nik Sultana, May 2013, Cambridge University Computer Lab
+
+if [ -z "${LEO2}" ]; then
+  echo "Need to set \$LEO2 to Leo-II's 'trunk' path"
+  exit 1
+fi
+
+[ -z "${TMPDIR}" ] && TMPDIR="/tmp"
+
+#Naive generation of tmp filename
+TMPFILE="${TMPDIR}/filter_proof_file_$$_${RANDOM}"
+if [ -e "${TMPFILE}" ]; then
+  echo "Randomly-generated tmp filename (${TMPFILE}) already exists -- please rerun command"
+  exit 1
+fi
+
+SOURCE_PROVER="LEO2"
+while getopts "p:" OPT
+do
+  case "$OPT" in
+    p)
+      SOURCE_PROVER="${OPTARG}"
+      ;;
+    *)
+      exit 1
+      ;;
+  esac
+done
+
+for FILE in "$@"
+do
+  if [ -f "${FILE}" ]
+  then
+    ${LEO2}/tools/filter_proof SOURCE_PROVER=${SOURCE_PROVER} ${FILE} > ${TMPFILE}
+    if [ -s "${TMPFILE}" ]
+    then
+      mv ${TMPFILE} ${FILE}
+    else
+      echo "${FILE} was empty after filtering." 1>&2
+      rm ${FILE}
+    fi
+  fi
+done
