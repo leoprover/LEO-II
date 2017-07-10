@@ -7,7 +7,7 @@ classical higher-order logic (simple type theory).
 LEO-II System Requirements:
    LEO-II runs on a regular Unix platform. 
    The following additional software is required:
-   - OCaml version 4 or above
+   - OCaml version 4.01.0 (other versions are untested; versions > 4.01.0 do, most likely, not work!)
    - GNU bash, version 2.x or above
    - A First Order Theorem Prover: Currently we recommend:  
       'The E Equational Theorem Prover' which is available at 
