@@ -624,6 +624,7 @@ thf_abstraction : /* Term.term */
 
 thf_unary_formula : /* Term.term */
     TILDE LPAREN thf_logic_formula RPAREN { Appl(Symbol(Signature.neg),$3) }
+  | TILDE thf_atom { Appl(Symbol(Signature.neg),$2) }
   | quantifier_comb thf_logic_formula { Appl($1, $2) }
   | quantifier_comb AT_SIGN thf_logic_formula { Appl($1, $3) }
 ;
