@@ -9,7 +9,7 @@ type ('a,'b,'c,'d) hash3 = ('a, ('b,'c,'d) hash2) hash1
 module OrderedPoly =
  struct
   type t = int
-  let compare x y = Pervasives.compare (Hashtbl.hash x) (Hashtbl.hash y) (* THIS IS BAD!!! *)
+  let compare x y = Stdlib.compare (Hashtbl.hash x) (Hashtbl.hash y) (* THIS IS BAD!!! *)
  
  end
 

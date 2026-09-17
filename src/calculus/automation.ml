@@ -407,15 +407,16 @@ let atp_mains =
    ("dummy", fun (st:state) ->
       (*This is an "external" prover which does nothing, but
         choosing this option will still exercise prover-calling code.*)
-      IFDEF DEBUG THEN
-        if !Util.debuglevel > 0 then
+      if Build_config.debug then
+        begin
+          if !Util.debuglevel > 0 then
           begin
-            let file_in = atp_infile st in
-              Util.sysout 1 "*** The FO part:\n";
-              ignore(Util.command("cat " ^ file_in));
-              Util.sysout 1 "\n*** End of FO part\n";
-          end;
-      END;
+          let file_in = atp_infile st in
+          Util.sysout 1 "*** The FO part:\n";
+          ignore(Util.command("cat " ^ file_in));
+          Util.sysout 1 "\n*** End of FO part\n";
+          end
+        end;
       (false,[],"")
    );
    ("e",fun (st:state) ->
@@ -431,9 +432,7 @@ let atp_mains =
       let file_in = "PIPE" in
       let file_out_used_leoclauses = atp_outfile st ^ "_used_clauses" in
       Util.register_tmpfiles [file_out_used_leoclauses];
-      IFDEF DEBUG THEN
-        Util.sysout 1 ("E(" ^ file_in ^ ")")
-      END;
+      if Build_config.debug then Util.sysout 1 ("E(" ^ file_in ^ ")");
       flush stdout;
       let output_options = (*E should not produce a proof if it's not needed*)
         if st.flags.proof_output > 1 then
@@ -444,14 +443,10 @@ let atp_mains =
           string_of_int st.flags.atp_timeout ^ " " ^ unix_options in
       let call_string = (prover ^ " " ^ options ^ " " ^ output_options) in
       let fo_clauses = get_fo_clauses st in
-      IFDEF DEBUG THEN
-        Util.sysout 1 ("\nCall string:"^call_string^"\n");
-      END;
+      if Build_config.debug then Util.sysout 1 ("\nCall string:"^call_string^"\n");
       (*FIXME replacing "ignore(Util.waitfor_spawn call_string);"
               with Sys.command below, due to issues on MacOSX*)
-      IFDEF DEBUG THEN
-        Util.sysout 1 ("\n**Sent to E**\n" ^ fo_clauses ^ "**(End of input to E)**\n");
-      END;
+      if Build_config.debug then Util.sysout 1 ("\n**Sent to E**\n" ^ fo_clauses ^ "**(End of input to E)**\n");
       let res_string =
         let (inchan, outchan) = Unix.open_process call_string in
         let rev_content : string list ref = ref [] in
@@ -469,13 +464,14 @@ let atp_mains =
           ignore(Unix.close_process (inchan, outchan));
           String.concat "\n" (List.rev !rev_content) ^ "\n"
       in
-      IFDEF DEBUG THEN
-        Util.sysout 1 ("]");
-        Util.sysout 1 ("\n*** Result of calling first order ATP E on " ^ file_in ^ " for " ^
-                         string_of_int st.flags.atp_timeout ^ " sec call: " ^ call_string ^ " ***\n");
-        Util.sysout 1 res_string;
-        Util.sysout 1 ("\n*** End of output from first-order ATP ***\n");
-      END;
+      if Build_config.debug then
+        begin
+          Util.sysout 1 ("]");
+          Util.sysout 1 ("\n*** Result of calling first order ATP E on " ^ file_in ^ " for " ^
+          string_of_int st.flags.atp_timeout ^ " sec call: " ^ call_string ^ " ***\n");
+          Util.sysout 1 res_string;
+          Util.sysout 1 ("\n*** End of output from first-order ATP ***\n")
+        end;
       Util.try_delete_file file_out_used_leoclauses;
       let result =
         Str.string_match (Str.regexp ".*SZS status Unsatisfiable.*") (eliminate_newlines res_string) 0 in
@@ -1043,23 +1039,21 @@ let pre_process (st:state) =
   (* List.iter (fun cl -> set_clause_weight cl 1) result; *)
   result
 
-IFDEF GIVENCLAUSEGRAPH THEN
 (*This will contain clauses which are "ignored", i.e.,
   never mentioned in the active or passive clause sets.
   I stored them in this set temporarily, to mention
-  them in the GIVENCLAUSEGRAPH output.*)
-let ignored_clauses = ref Set_of_clauses.empty;
-ENDIF
+  them in the given-clause-graph output.*)
+let ignored_clauses = ref Set_of_clauses.empty
 
 (*The Main Loop*)
 let loop (st:state) =
-  IFDEF DEBUG THEN Util.sysout 1 ("<StartLooping>") ENDIF;
+  if Build_config.debug then Util.sysout 1 ("<StartLooping>");
   try
     while not (check_local_max_time st) do
       let lc = inc_loop_count st
       in
         State.check_timeout ();
-        IFDEF DEBUG THEN output st (fun () -> "\n\n *** NEW LOOP: " ^ string_of_int lc ^ " ***\n") ENDIF;
+        if Build_config.debug then output st (fun () -> "\n\n *** NEW LOOP: " ^ string_of_int lc ^ " ***\n");
         if st.flags.max_loop_count > 0 && st.loop_count >= st.flags.max_loop_count then
           begin
             (*FIXME could elaborate the reason why GaveUp*)
@@ -1069,13 +1063,14 @@ let loop (st:state) =
         if not (st.flags.atp_prover = "none") then call_fo_atp_according_to_frequency_flag st st.flags.atp_prover;
         let lightest = choose_and_remove_lightest_from_active st in
         let lightest' =
-            IFDEF DEBUG THEN
-              output st
-              (fun () ->
-                 "\n1. LIGHTEST: " ^ cl_clause_to_protocol lightest ^
-                   "\n1  ACTIVE: " ^ cl_clauselist_to_protocol (Set_of_clauses.elements st.active));
-              Util.sysout 2 ("[" ^ string_of_int lc ^ "-" ^ string_of_int lightest.cl_number ^ "] ");
-            ENDIF;
+            if Build_config.debug then
+              begin
+                output st
+                (fun () ->
+                "\n1. LIGHTEST: " ^ cl_clause_to_protocol lightest ^
+                "\n1  ACTIVE: " ^ cl_clauselist_to_protocol (Set_of_clauses.elements st.active));
+                Util.sysout 2 ("[" ^ string_of_int lc ^ "-" ^ string_of_int lightest.cl_number ^ "] ")
+              end;
             rename_free_variables lightest st
         in
           if not (is_subsumed_by lightest' (Set_of_clauses.elements st.passive) st FO_match) 
@@ -1083,35 +1078,30 @@ let loop (st:state) =
           then
             (*Main loop's main body*)
             begin
-              IFDEF GIVENCLAUSEGRAPH THEN
-              lastloop_ran := true
-              ENDIF;
+              if Build_config.given_clause_graph then lastloop_ran := true;
 
               set_passive st (list_to_set (delete_subsumed_clauses (Set_of_clauses.elements st.passive) lightest' st FO_match));
 	      add_to_passive st lightest';
               (* set_passive st (list_to_set (merge_lists_with_subsumption [lightest'] (Set_of_clauses.elements st.passive) st FO_match)); *)
               (* add_to_passive st lightest'; *)
-              IFDEF DEBUG THEN
-                output st (fun () -> "\n2. PASSIVE: " ^ cl_clauselist_to_protocol (Set_of_clauses.elements st.passive));
-              ENDIF;
+              if Build_config.debug then output st (fun () -> "\n2. PASSIVE: " ^ cl_clauselist_to_protocol (Set_of_clauses.elements st.passive));
 
               let res_resolve =
                 List.fold_right
                   (fun cl cll -> resolve lightest' cl st @cll) (Set_of_clauses.elements st.passive) [] in
-              IFDEF DEBUG THEN
-                output st (fun () -> "\n3. RES: " ^ cl_clauselist_to_protocol res_resolve);
-              ENDIF;
+              if Build_config.debug then output st (fun () -> "\n3. RES: " ^ cl_clauselist_to_protocol res_resolve);
 
               let res_prim_subst = (raise_to_list prim_subst) [lightest'] st
               and res_pos_bool = (raise_to_list boolean_ext_pos_main_loop) [lightest'] st
               and res_fac_restr = (raise_to_list factorize_restricted) [lightest'] st
               and res_choice = if st.flags.use_choice then (exhaustive (raise_to_list cnf_normalize_step) ((raise_to_list apply_choice) [lightest'] st) st) else [] in
-              IFDEF DEBUG THEN
-                output st (fun () -> "\n4. PRIM_SUBST: " ^ cl_clauselist_to_protocol res_prim_subst);
-                output st (fun () -> "\n5. BOOL_POS: " ^ cl_clauselist_to_protocol res_pos_bool);
-                output st (fun () -> "\n6. FAC_RESTR: " ^ cl_clauselist_to_protocol res_fac_restr);
-                output st (fun () -> "\n7. CHOICE: " ^ cl_clauselist_to_protocol res_choice);
-              ENDIF;
+              if Build_config.debug then
+                begin
+                  output st (fun () -> "\n4. PRIM_SUBST: " ^ cl_clauselist_to_protocol res_prim_subst);
+                  output st (fun () -> "\n5. BOOL_POS: " ^ cl_clauselist_to_protocol res_pos_bool);
+                  output st (fun () -> "\n6. FAC_RESTR: " ^ cl_clauselist_to_protocol res_fac_restr);
+                  output st (fun () -> "\n7. CHOICE: " ^ cl_clauselist_to_protocol res_choice)
+                end;
               
               let res_processed_pre_pre =  (res_resolve @ res_prim_subst @ res_pos_bool @ res_fac_restr @ res_choice) in
 
@@ -1121,9 +1111,7 @@ let loop (st:state) =
                    exhaustive (raise_to_list cnf_normalize_step);
                    exhaustive (raise_to_list simplify)]
                    res_processed_pre_pre st in
-              IFDEF DEBUG THEN
-                output st (fun () -> "\n8. PROCESSED_PRE: " ^ cl_clauselist_to_protocol res_processed_pre);
-              ENDIF;
+              if Build_config.debug then output st (fun () -> "\n8. PROCESSED_PRE: " ^ cl_clauselist_to_protocol res_processed_pre);
 
             let res_processed_pre_leibniz =
               if st.flags.replace_leibnizEQ then exhaustive (raise_to_list replace_leibniz_lits) res_processed_pre st else res_processed_pre in
@@ -1131,41 +1119,36 @@ let loop (st:state) =
               if st.flags.replace_andrewsEQ then exhaustive (raise_to_list replace_andrews_lits) res_processed_pre_leibniz st else res_processed_pre_leibniz in
             let res_processed = res_processed_pre_andrews in
                 
-            IFDEF DEBUG THEN
-              output st (fun () -> "\n9. PROCESSED (replacement of LeibnizEQ and AndrewsEQ eventually applied): " ^ cl_clauselist_to_protocol res_processed);
-            ENDIF;
+            if Build_config.debug then output st (fun () -> "\n9. PROCESSED (replacement of LeibnizEQ and AndrewsEQ eventually applied): " ^ cl_clauselist_to_protocol res_processed);
 
             (*FIXME naive filtering below, to remove lightest' from new_active*)
             let new_active = List.filter (fun cl -> cl.cl_number <> lightest'.cl_number)
               (res_processed @ Set_of_clauses.elements st.active) in
               (* merge_lists_with_subsumption (res_processed) (Set_of_clauses.elements st.active) st FO_match in *)
 
-            IFDEF GIVENCLAUSEGRAPH THEN
-            ignored_clauses :=
-              Set_of_clauses.diff
-                (Set_of_clauses.union
-                   (Set_of_clauses.union (list_to_set res_processed_pre_pre) (list_to_set res_processed_pre))
-                   (Set_of_clauses.union (list_to_set res_processed_pre_leibniz) (list_to_set res_processed_pre_andrews)))
-                (Set_of_clauses.union st.active st.passive);
-            ENDIF;
+            if Build_config.given_clause_graph then
+              ignored_clauses :=
+                Set_of_clauses.diff
+                  (Set_of_clauses.union
+                     (Set_of_clauses.union (list_to_set res_processed_pre_pre) (list_to_set res_processed_pre))
+                     (Set_of_clauses.union (list_to_set res_processed_pre_leibniz) (list_to_set res_processed_pre_andrews)))
+                  (Set_of_clauses.union st.active st.passive);
 
             index_clauselist_with_role new_active st;
             set_active st (list_to_set new_active);
-            IFDEF DEBUG THEN
-              output st (fun () -> "\n10. ACTIVE: " ^ cl_clauselist_to_protocol (Set_of_clauses.elements st.active));
-            ENDIF;
+            if Build_config.debug then output st (fun () -> "\n10. ACTIVE: " ^ cl_clauselist_to_protocol (Set_of_clauses.elements st.active));
           end
           else
             begin
-              IFDEF GIVENCLAUSEGRAPH THEN
-              lastloop_ran := false;
-              ignored_clauses := Set_of_clauses.empty
-              ENDIF;
+              if Build_config.given_clause_graph then
+                begin
+                  lastloop_ran := false;
+                  ignored_clauses := Set_of_clauses.empty
+                end;
             end;
 
-          IFDEF GIVENCLAUSEGRAPH THEN
-            print_actpas_sets lightest lightest' !ignored_clauses st
-          ENDIF;
+          if Build_config.given_clause_graph then
+            print_actpas_sets lightest lightest' !ignored_clauses st;
     done
   with
       Sys.Break ->

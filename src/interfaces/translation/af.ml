@@ -21,7 +21,8 @@ let transform_fmla_af pred f af =
     | _ -> af
 
 (*project out the app_term values from af values*)
-let (get_af_formulas : (af_role -> bool) -> af list -> app_term list) pred =
+let get_af_formulas : (af_role -> bool) -> af list -> app_term list =
+  fun pred ->
   let get_af_formula af =
     match af with
         Formula (_, af_role, ta) when pred af_role -> [ta]

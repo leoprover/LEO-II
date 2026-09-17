@@ -91,61 +91,8 @@ let cl_info cl = cl.cl_info
 let cl_max_lit_num cl = cl.cl_max_lit_num 
 let cl_origin cl = cl.cl_origin
 
-IFDEF OLDCLAUSEORDERING THEN
-let cl_origin_compare clo1 clo2 = 
-  match (clo1,clo2) with
-    | (CONJECTURE,AXIOM) -> -1 
-    | (AXIOM,CONJECTURE) -> 1
-    | (DERIVED,AXIOM) -> -1
-    | (DERIVED,CONJECTURE) -> -1
-    | _ -> 0
-
-let cl_compare (cl1:cl_clause) (cl2:cl_clause) =
- (* if cl_origin_compare cl1.cl_origin cl2.cl_origin != 0 then
-    cl_origin_compare cl1.cl_origin cl2.cl_origin 
-  else *)
-  let origin_leq = cl_origin_compare cl1.cl_origin cl2.cl_origin 
-  in
-  let weight_leq =   
-   if cl1.cl_weight = cl2.cl_weight then 
-   if cl1.cl_number = cl2.cl_number then 0
-   else 
-    if cl1.cl_number < cl2.cl_number then -1 else 1
-    else
-      if cl1.cl_weight < cl2.cl_weight then -1 else 1
-  in
-    match (weight_leq,origin_leq) with
-       (-1,_) -> -1
-     | (0,-1) -> -1
-     | (0,0)  -> 0
-     | (0,1)  -> 1
-     | (1,_)  -> 1
-     | _      -> 0
-
-let cl_mk_clause (litlist:role lit_literal list) (int:int) (free_vars:term list) (info:cl_info) (origin:cl_origin) =
-  let rec max_num_and_sum (ll:role lit_literal list) (max:int) (max_num:int) (sum:int) =
-    match ll with
-        [] -> (max_num,sum)
-      | hd::tl ->
-          if hd.lit_weight < max
-          then max_num_and_sum tl max max_num (sum + hd.lit_weight) 
-          else max_num_and_sum tl max (max_num + 1) (sum + hd.lit_weight) in
-  let sorted_litlist = List.fast_sort Pervasives.compare litlist in
-  let (max_num,sum) = 
-    match sorted_litlist with 
-        [] -> (0,0)
-      | hd::tl -> max_num_and_sum sorted_litlist (lit_weight hd) 0 0 in
-    { cl_number = int;      (* side-effect: increments clause counter in state *)
-      cl_litarray = (Array.of_list sorted_litlist);
-      cl_max_lit_num = max_num; 
-      (* cl_weight = (List.length free_vars) + sum; *)
-      cl_weight = sum;  
-      cl_free_vars = free_vars;
-      cl_info = info;
-      cl_origin = origin
-    }
-
-ELSE
+(* Clauses are compared by the lexicographic ordering (weight, number, origin).
+   An earlier ordering, selected by the OLDCLAUSEORDERING macro, was dropped in 1.8.0. *)
 (*clauses are compared using lexordering (weight, clause number, origin)
   previously clauses were compared according to:
     * sum of literal weights alone (this was before the clause type had a "cl_weight" field
@@ -165,9 +112,7 @@ let cl_compare (cl1 : cl_clause) (cl2 : cl_clause) =
       | (CONJECTURE, DERIVED) -> 1
       | (x, y) ->
           begin
-            IFDEF DEBUG THEN
-              assert (x = y);
-            END;
+            if Build_config.debug then assert (x = y);
             0
           end in
   let weight_leq =
@@ -219,7 +164,6 @@ let cl_mk_clause (litlist : role lit_literal list) (int : int) (free_vars : term
       cl_info = info;
       cl_origin = origin
     }
-END
 
 (*
 let cl_mk_clause_from_termlists (poslist:lit_term list) (neglist:lit_term list)  (int:int) =

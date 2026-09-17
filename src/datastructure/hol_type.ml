@@ -31,9 +31,11 @@ let mk_polyvar i =
   else Basetype ("'"^(String.make 1 (Char.chr (65+(i mod 26))))^(string_of_int m))
 
 
+exception Dest_basetype
+
 let dest_basetype = function
     Basetype s -> s
-  | _ -> failwith "dest_basetype"
+  | _ -> raise Dest_basetype
 
 let dest_funtype = function
     Funtype (t1, t2) -> (t1, t2)
@@ -86,7 +88,7 @@ let is_basetype = function
 let is_polyvar = function
     Basetype s ->
       let rest = String.sub s 1 (String.length s - 1) in
-      (String.get s 0 = '\'' && (String.uppercase rest = rest)) || (s = "*") || (String.uppercase s = s)
+      (String.get s 0 = '\'' && (String.uppercase_ascii rest = rest)) || (s = "*") || (String.uppercase_ascii s = s)
   | Funtype _ -> false
 
 let is_typevar = function

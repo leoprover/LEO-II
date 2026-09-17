@@ -69,7 +69,7 @@ let rec type_of_appterm ta =
                                    String.concat ", " (List.map Hol_type.to_string lf) ^ "]",
                                  ta1_ty))
               with
-                  Failure "list_split_at" ->
+                  General.List_split_at ->
                     raise (APP_TERM ("Type inference failed: too many arguments", ta))
             end
         in

@@ -93,6 +93,9 @@ val occurs : string -> hol_type -> bool
 (** [occurs x ty] checks whether [basetype x] occurs in [ty]. *)
 
 exception Unsatisfiable
+
+(*raised by dest_basetype when its argument is not a base type*)
+exception Dest_basetype
 (** Raised by unify_constraints. *)
 
 val unify_constraints : (hol_type -> bool) -> (hol_type * hol_type) list -> (hol_type * hol_type) list

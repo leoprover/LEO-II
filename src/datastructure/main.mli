@@ -18,6 +18,7 @@ open Hol_type
 open State
 
 exception EMPTYCLAUSE_DERIVED
+exception To_fotptp_cnf
 exception MAX_CLAUSES
 exception MAX_LOOPS
 exception ACTIVE_EMPTY

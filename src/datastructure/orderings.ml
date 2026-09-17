@@ -12,7 +12,7 @@ exception NO_ORDER_INFO
 exception ORDERINGS of string
 
 type order = Greater | Equal | Unknown
-type precedence 'a = ('a * order * 'a) list
+type 'a precedence = ('a * order * 'a) list
 
 let empty_order x y = Unknown
 
@@ -206,12 +206,12 @@ struct
             ordered_symbol_typings
             (false, -1)
         in
-          IFDEF DEBUG THEN
-            assert found;
-            if found then idx + 1 else unk_const_weight
-          ELSE
-            idx + 1
-          END;
+          if Build_config.debug then
+            begin
+              assert found;
+              if found then idx + 1 else unk_const_weight
+            end
+          else idx + 1
     in constVars_offsetAbs_addApp signature_precedence var_weight unk_const_weight abs_offset t
 
   (*Typed-based weighting of terms, which doesn't descend through terms

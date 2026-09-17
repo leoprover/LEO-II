@@ -34,7 +34,12 @@ LEO-II Installation Instructions:
 
      To build LEO-II you need to have the ocamlfind utility.
      Furthermore, building MiniSAT (which is included in the
-     distribution of LEO-II) requires GCC.
+     distribution of LEO-II) requires a C++ compiler.
+
+     What used to be camlp4 macros are now the values in the generated
+     file src/general/build_config.ml, which "make" writes from the
+     variables at the top of the Makefile.  Nothing preprocesses the
+     sources any more.
 
      Running these commands will create an executable
                   [installation-directory]/leo2/bin/leo
@@ -42,8 +47,6 @@ LEO-II Installation Instructions:
  (7) Try the following in case of errors during build
        - Run "make list_versions" and check if all the version numbers
          are identical.
-       - Run "make cleaner", and then retry "make", to remove a binary
-         used to speed-up building.
        - If you have multiple versions of OCaml in your PATH, you
          can specify which version to use via the --ocamlbindir parameter
          to the configure script.

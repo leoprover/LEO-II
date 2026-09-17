@@ -4,21 +4,19 @@ open Interactive
 open Automation
 open State
 
-IFDEF DEBUG THEN
-  Printexc.record_backtrace true;
-  Printexc.register_printer Translation.exc_printers;
-END
+let () =
+  if Build_config.debug then
+    begin
+      Printexc.record_backtrace true;
+      Printexc.register_printer Translation.exc_printers
+    end;
+  Sys.catch_break true
 
-Sys.catch_break true;;
-
-IFDEF REV THEN
-let rev = "(r" ^ string_of_int REV ^ ")"
-ELSE
-let rev = ""
-END
+let rev =
+  if Build_config.revision = "" then "" else "(" ^ Build_config.revision ^ ")"
 
 let version () =
-  print_endline ("LEO-II version v1.7 " ^ rev ^ " \
+  print_endline ("LEO-II version v1.8.0 " ^ rev ^ " \
   (compiled on " ^ Sys.os_type ^ " with OCaml-" ^ Sys.ocaml_version ^ ")");
   if State.state_initialize.flags.verbose then Automation.atp_versions ()
 
@@ -155,7 +153,7 @@ let rec parse_cl cs ps =
         parse_cl xs (EXPAND_EXTUNI :: ps)
     | "-f" :: xs
     | "--foatp" :: xs ->
-        parse_cl (tl xs) (FOATP (String.lowercase (get_cl_string (hd cs) xs)) :: ps)
+        parse_cl (tl xs) (FOATP (String.lowercase_ascii (get_cl_string (hd cs) xs)) :: ps)
     | "-h" :: xs
     | "--help" :: xs ->
         parse_cl xs (HELP :: ps)
@@ -241,14 +239,12 @@ let cleanup () =
   Util.delete_all_tmpfiles ()
 
 (*FIXME move to State, or delete -- left here temporarily for testing*)
-IFDEF DEBUG THEN
 let sched_num = ref 0
+
 let sched_inc () =
-  let next = 1 + !sched_num
-  in
+  let next = 1 + !sched_num in
     sched_num := next;
     next
-END
 
 (*This function oversees the running schedules, and controlled is returned to
   this function when a schedule's timeout expires. It consumes the schedules
@@ -275,11 +271,12 @@ let run_schedules () =
         (max 3
            (int_of_float (duration /. float State.atp_subslices)))
     in
-      IFDEF DEBUG THEN
-        Util.sysout 2 ("Schedule " ^ string_of_int (sched_inc ()) ^
-                         " (total of " ^ string_of_float duration ^ "s" ^
-                         ", E gets slices of maximum " ^ string_of_int atptmo ^ ")\n")
-      END;
+      if Build_config.debug then
+        begin
+          Util.sysout 2 ("Schedule " ^ string_of_int (sched_inc ()) ^
+          " (total of " ^ string_of_float duration ^ "s" ^
+          ", E gets slices of maximum " ^ string_of_int atptmo ^ ")\n")
+        end;
 
       State.set_current_success_status None Unknown;
       begin
@@ -356,9 +353,7 @@ let execute_conf () =
                 (Strategy_scheduling.compute_strategies global_conf probfilename)
             in
               Queue.clear global_conf.schedules;
-              IFDEF DEBUG THEN
-                Util.sysout 2 ("Duration of slices: " ^ string_of_int timeslice)
-              END;
+              if Build_config.debug then Util.sysout 2 ("Duration of slices: " ^ string_of_int timeslice);
               (*enqueue schedules*)
               List.iter
                 (fun strat ->
@@ -586,4 +581,4 @@ let leo_main () =
     if not global_conf.interactive then
         exit (szs_exitcode ())
 
-IFNDEF TOPLEVEL THEN leo_main () END
+let () = if not Build_config.toplevel then leo_main ()

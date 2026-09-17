@@ -28,6 +28,9 @@ let kill_children () =
 
 exception Timeout
 
+(*raised when the number given to the test-problem command is out of range*)
+exception Unknown_test_problem
+
 let original_timeout = ref 600
 
 let set_original_timeout t =
@@ -1700,9 +1703,7 @@ let state_to_multiple_thf_problems (st:state) =
   else []
 
 let prove_with_fo_atp (st : state) (prover : string) =
-  IFDEF DEBUG THEN
-    Util.sysout 0 (summary_stats_string st)
-  END;
+  if Build_config.debug then Util.sysout 0 (summary_stats_string st);
   (*FIXME not sure why give_it_a_try_with_prover only works
           with a singleton problem_stack*)
   let give_it_a_try_with_prover (st:state) (prover:string) =
@@ -1748,13 +1749,14 @@ let prove_with_fo_atp (st : state) (prover : string) =
       Util.sysout 0 "No proof problem given.\n"
     else
       let problem_array_thf = Array.of_list (state_to_multiple_thf_problems st) in
-        IFDEF DEBUG THEN
-          Util.sysout 1 "\nLEO-II tries to prove the following (sub)problems.\n";
-          for i = 0 to Array.length problem_array_thf - 1 do
+        if Build_config.debug then
+          begin
+            Util.sysout 1 "\nLEO-II tries to prove the following (sub)problems.\n";
+            for i = 0 to Array.length problem_array_thf - 1 do
             Util.sysout 1 ("\n\n(" ^ string_of_int i ^
-             ") Problem:\n " ^ problem_array_thf.(i))
-          done;
-        END;
+            ") Problem:\n " ^ problem_array_thf.(i))
+            done
+          end;
         let success = ref true in
         let all_empty_clauses_for_splits = ref [] in
         (*This is a key part of Leo-II. Iterates through the (sub)problems (e.g. the
@@ -1811,17 +1813,13 @@ let prove_with_fo_atp (st : state) (prover : string) =
                     set_problem_stack st theorem_clauses;
                     set_problem_axioms st axiom_clauses;
 
-                    IFDEF DEBUG THEN
-                      Util.sysout 1 ("\n\n*** Trying Problem: " ^ string_of_int !i ^ " ")
-                    END;
+                    if Build_config.debug then Util.sysout 1 ("\n\n*** Trying Problem: " ^ string_of_int !i ^ " ");
                     let local_success = give_it_a_try_with_prover st prover
                     in
                       if local_success then
                         all_empty_clauses_for_splits := List.hd st.empty_clauses :: !all_empty_clauses_for_splits
                       else
-                        IFDEF DEBUG THEN
-                          Util.sysout 1  ("\n*** Did not prove problem: " ^ string_of_int !i)
-                        END;
+                        if Build_config.debug then Util.sysout 1  ("\n*** Did not prove problem: " ^ string_of_int !i);
 
                       success := !success && local_success
             done;
@@ -2083,12 +2081,17 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        state_reset st;
        protocol_init ();
        fo_clauses_init st;
-       let problem_string = List.nth test_problems (num - 1) in
+       let problem_string =
+         if num < 1 then raise Unknown_test_problem
+         else
+           match List.nth_opt test_problems (num - 1) with
+               Some s -> s
+             | None -> raise Unknown_test_problem in
        let (termlist,sigma,termroles) = parse_thf_string problem_string in
        init_problem termlist sigma termroles ("creator","input_from_command_line") st
     )
    with
-     Failure "nth" ->
+     Unknown_test_problem ->
        Util.sysout 1 ("Unknown test problem number.\n");
        false
    | Failure s ->

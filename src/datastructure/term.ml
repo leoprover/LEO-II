@@ -53,7 +53,7 @@ let is_symbol = function
 
 let is_variable = function
     Symbol s -> (String.get s 0) >= 'A' && (String.get s 0) <= 'Z'
-    (*Symbol s -> Char.uppercase (String.get s 0) = String.get s 0*)
+    (*Symbol s -> Char.uppercase_ascii (String.get s 0) = String.get s 0*)
   | _ -> false
   
 let get_symbol = function

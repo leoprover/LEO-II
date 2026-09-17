@@ -3287,9 +3287,7 @@ let rec pre_uni_new'
                       begin
                         let xl_ty = type_of xl in
                         let xr_ty = type_of xr in
-                          IFDEF DEBUG THEN
-                            assert (xl_ty = xr_ty);
-                          END;
+                          if Build_config.debug then assert (xl_ty = xr_ty);
                           match (xl_ty, xr_ty, decFuncProcessed) with
                               (Funtype _, Funtype _, _) ->
                                 let free_vars = litlist_free_vars (unilits @ flexlits @ otherlits) in
@@ -3652,7 +3650,8 @@ let rec pre_uni_new2
                               in
                                 pre_uni_new2 (dec_lits @ restlits) flexlits otherlits subst st depth flag_ext (changes + 1) dec_cl1 @
                                   pre_uni_new2 (dec_lits_commuted @ restlits) flexlits otherlits subst st depth flag_ext (changes + 1) dec_cl2
-                        | _  when (List.map type_of (get_args xl)) = (List.map type_of (get_args xr)) ->  (* normal dec *)
+                        | _ ->  (* normal dec; the guard of the enclosing clause already
+                                     established that the argument types agree *)
                             let dec_lits = make_dec_lits st (get_args xl) (get_args xr) in
                             let dec_cl1 = create_intermediate_uni_step "_dec" flexlits (otherlits @ dec_lits @ restlits) subst st cl in
                               pre_uni_new2 (dec_lits @ restlits) flexlits otherlits subst st depth flag_ext (changes + 1) dec_cl1

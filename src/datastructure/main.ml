@@ -15,6 +15,9 @@ open State
         explicit the signals which were previously
         encoded in generic "Failure" exceptions.*)
 exception EMPTYCLAUSE_DERIVED
+
+(*raised where a clause has no first-order translation*)
+exception To_fotptp_cnf
 exception MAX_CLAUSES
 exception MAX_LOOPS
 exception ACTIVE_EMPTY
@@ -450,10 +453,10 @@ let rec to_fotptp_cnf = function
        | "$false" -> "$false"
        | _ -> 
 	   if (type_of (term2xterm (Symbol s)) = bt_o) && (is_variable (term2xterm (Symbol s)))
-	   then String.lowercase s
+	   then String.lowercase_ascii s
 	   else s
      )
-  | Abstr(_,_,_) -> raise (Failure "to_fotptp_cnf")
+  | Abstr(_,_,_) -> raise To_fotptp_cnf
   | Appl(Appl(Symbol "=", t1),t2) ->
       if ((type_of (term2xterm t1)) = bt_o) && ((type_of (term2xterm t2)) = bt_o) then 
 	("("^(to_fotptp_cnf  t1)^" <=> "^(to_fotptp_cnf  t2)^")")
@@ -471,25 +474,25 @@ let rec to_fotptp_cnf = function
 
 (*
    | Appl(Appl(Symbol binop, t1),t2) -> 
-   if symb_is_critical binop then raise (Failure "to_fotptp_cnf")
+   if symb_is_critical binop then raise To_fotptp_cnf
    else 
-   if ((type_of (term2xterm t2)) = bt_o) then raise (Failure "to_fotptp_cnf")
+   if ((type_of (term2xterm t2)) = bt_o) then raise To_fotptp_cnf
    else ("at("^binop^","^(to_fotptp_cnf  t1)^","^(to_fotptp_cnf  t2)^")")
 (*
    then ((to_fotptp_cnf t1)^" "^(hotptpsymb_critical binop)^" "^(to_fotptp_cnf t2)) 
    else (binop^"("^(to_fotptp_cnf t1)^","^(to_fotptp_cnf t2)^")")
  *) 
    | Appl(Symbol unop,t) -> 
-   if symb_is_critical unop then raise (Failure "to_fotptp_cnf")
+   if symb_is_critical unop then raise To_fotptp_cnf
 (*
    then ((hotptpsymb_critical unop)^"("^(to_fotptp_cnf t)^")")
  *) 
    else 
-   if ((type_of (term2xterm t)) = bt_o) then raise (Failure "to_fotptp_cnf")
+   if ((type_of (term2xterm t)) = bt_o) then raise To_fotptp_cnf
    else ("at("^unop^","^(to_fotptp_cnf  t)^")")
  *)
   | Appl(t1,t2) -> 
-      if ((type_of (term2xterm t2)) = bt_o) then raise (Failure "to_fotptp_cnf")
+      if ((type_of (term2xterm t2)) = bt_o) then raise To_fotptp_cnf
       else "at_"^(Hol_type.to_fotptp_cnf (type_of (term2xterm t1)))^"_"^(Hol_type.to_fotptp_cnf (type_of (term2xterm t2)))^"("^(to_fotptp_cnf  t1)^","^(to_fotptp_cnf  t2)^")"
 																					      
 																					      
@@ -520,7 +523,7 @@ let cl_clause_to_fotptp_cnf_1 (st:state) (clause:cl_clause) =
     and clause_name = (* ("leo_II_clause_"^(string_of_int clause.cl_number)) *)
           (string_of_int clause.cl_number)
     in [(clause_name,("\n fof("^clause_name^",axiom,"^free_vars_string^"("^litstring^"))."))]
-  with Failure "to_fotptp_cnf" -> []
+  with To_fotptp_cnf -> []
       
       
       
@@ -592,9 +595,9 @@ let rec translate_term_2 term argtype =
 	| "$false"   -> ("leoTi(false,"^ty^")")
 	| "~"     -> ("leoTi(neg,"^ty^")")
 	| "|"      -> ("leoTi(or,"^ty^")")
-	| "="  ->  raise (Failure "to_fotptp_cnf")
-	| "!"  ->  raise (Failure "to_fotptp_cnf")
-	| "^"  ->  raise (Failure "to_fotptp_cnf")
+	| "="  ->  raise To_fotptp_cnf
+	| "!"  ->  raise To_fotptp_cnf
+	| "^"  ->  raise To_fotptp_cnf
 	| s -> ("leoTi("^s^","^ty^")")
       )
   | Abstr(x1,tp,t1) -> 
@@ -644,7 +647,7 @@ let cl_clause_to_fotptp_cnf_2 (st:state) (clause:cl_clause) =
     and clause_name = (* ("leo_II_clause_"^(string_of_int clause.cl_number)) *)
          (string_of_int clause.cl_number)
     in [(clause_name,("\n fof("^clause_name^",axiom,"^free_vars_string^"("^litstring^"))."))]
-  with Failure "to_fotptp_cnf" -> (Util.sysout 3 ("\n No FOF translation for clause "^(cl_clause_to_string clause)); [])
+  with To_fotptp_cnf -> (Util.sysout 3 ("\n No FOF translation for clause "^(cl_clause_to_string clause)); [])
 
 
 
@@ -1020,7 +1023,7 @@ let choose_and_remove_lightest_from_active (st : state) =
     let lightest = Set_of_clauses.min_elt st.active
     in
       begin
-        IFDEF DEBUG THEN Util.sysout 2 ("\n Lightest Clause : " ^ cl_clause_to_string lightest) END;
+        if Build_config.debug then Util.sysout 2 ("\n Lightest Clause : " ^ cl_clause_to_string lightest);
         (* destructive removal of lightest from active *)
         let length1 = List.length (Set_of_clauses.elements st.active) in 
         let _ = set_active st (Set_of_clauses.remove lightest st.active) in 
@@ -1116,7 +1119,7 @@ let variables_to_post (st:state) =
   let (vars,_) = 
     List.partition 
       (fun (s,i) -> (String.get s 0) >= 'A' && (String.get s 0) <= 'Z') 
-(*      (fun (s,i) -> (Char.uppercase (String.get s 0) = String.get s 0)) *)
+(*      (fun (s,i) -> (Char.uppercase_ascii (String.get s 0) = String.get s 0)) *)
       (List.sort Hol_type.compare_string_type_pair (all_uninterpreted_symbols st.signature))
   in 
   List.fold_left (fun s (t,i) -> s^" ("^t^" "^(Hol_type.to_post i)^")") "" vars
@@ -1124,7 +1127,7 @@ let variables_to_post (st:state) =
 let constants_to_post (st:state) =
   let (_,consts) = 
     List.partition (fun (s,i) -> (String.get s 0) >= 'A' && (String.get s 0) <= 'Z') 
-(*    List.partition (fun (s,i) -> (Char.uppercase (String.get s 0) = String.get s 0)) *) 
+(*    List.partition (fun (s,i) -> (Char.uppercase_ascii (String.get s 0) = String.get s 0)) *) 
       (List.sort Hol_type.compare_string_type_pair (all_uninterpreted_symbols st.signature))
   in 
   List.fold_left (fun s (t,i) -> s^" ("^t^" "^(Hol_type.to_post i)^")") "" consts
@@ -1138,12 +1141,12 @@ let constants_to_hotptp (st:state) =
   in
   let (_,consts) = 
     List.partition (fun (s,i) -> (String.get s 0) >= 'A' && (String.get s 0) <= 'Z') 
-(*    List.partition (fun (s,i) -> (Char.uppercase (String.get s 0) = String.get s 0))  *)
+(*    List.partition (fun (s,i) -> (Char.uppercase_ascii (String.get s 0) = String.get s 0))  *)
       (List.sort Hol_type.compare_string_type_pair (all_uninterpreted_symbols st.signature))
   in
   let (_,defs) = 
     List.partition (fun (s,i) -> (String.get s 0) >= 'A' && (String.get s 0) <= 'Z') 
-      (*    List.partition (fun (s,i) -> (Char.uppercase (String.get s 0) = String.get s 0)) *)
+      (*    List.partition (fun (s,i) -> (Char.uppercase_ascii (String.get s 0) = String.get s 0)) *)
       (List.sort Signature.compare_defns (all_defined_symbols_without_logical_symbols st.signature))
   in
   let pre_result =
@@ -1158,7 +1161,7 @@ let constants_to_hotptp (st:state) =
 let definitions_to_hotptp (st:state) =
   let (_,defs) = 
     List.partition (fun (s,i) -> (String.get s 0) >= 'A' && (String.get s 0) <= 'Z') 
-(*    List.partition (fun (s,i) -> (Char.uppercase (String.get s 0) = String.get s 0)) *)
+(*    List.partition (fun (s,i) -> (Char.uppercase_ascii (String.get s 0) = String.get s 0)) *)
       (all_defined_symbols_without_logical_symbols st.signature)
   in 
   List.fold_left (fun s (t,(term,_)) -> s^"thf("^t^",definition,(\n    "^t^" := ("^(Term.to_hotptp term)^" ) )).\n\n") "" defs

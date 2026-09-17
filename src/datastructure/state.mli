@@ -261,8 +261,6 @@ val szs_result : state option -> string
 
 val szs_exitcode : unit -> int
 
-IFDEF GIVENCLAUSEGRAPH THEN
 val lastloop_no : int ref
 val lastloop_ran : bool ref
 val print_actpas_sets : Clause.cl_clause -> Clause.cl_clause -> Clauseset.Set_of_clauses.t -> state -> unit
-ENDIF

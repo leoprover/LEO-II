@@ -701,18 +701,15 @@ let rec tag_app_term (cfg : Translation_general.configuration) (d : decoration_p
           in
             if check_head_const true (eq appK) ta1 then
               begin
-                IFDEF DEBUG THEN
-                  assert (not at_formula_level);
-                END;
+                if Build_config.debug then assert (not at_formula_level);
                 (*if head const is appK then tag it, but don't wrap it in appK*)
                 ti_at cfg ty (ta1 $$ List.map (tagger false) tas)
               end
             else if check_head_const true (eq Signature.equality) ta1 then
               (*No need to handle "!=" since it has been expanded away*)
               begin
-                IFDEF DEBUG THEN
-                  assert at_formula_level; (*if ta1="=" and at_formula_level=false then = should have been proximated*)
-                END;
+                (*if ta1="=" and at_formula_level=false then = should have been proximated*)
+                if Build_config.debug then assert at_formula_level;
 
                 if List.exists (check_head_const false (is_iconstant false)) tas ||
                   (*don't forget quantifiers*)
@@ -731,9 +728,7 @@ let rec tag_app_term (cfg : Translation_general.configuration) (d : decoration_p
                 (*head must be special_symbol. we have already handled the case where ta1=appK.
                   so ta1 must be tiK*)
                 begin
-                  IFDEF DEBUG THEN
-                    assert (check_head_const true (eq tiK) ta1);
-                  END;
+                  if Build_config.debug then assert (check_head_const true (eq tiK) ta1);
                   ta1 $$ List.map (tagger false) tas
                 end
               else
@@ -1054,17 +1049,16 @@ let tr_add_fo_clauses (cll : Clause.cl_clause list) (st : State.state) =
         |> List.concat in
     let current_clauses_labels = List.map fst fo_clauses
     in
-      IFDEF DEBUG THEN
-        Util.sysout 1 ("previous FO clause labels = " ^
-                         String.concat ", " !prev_fo_clauses ^ "\n");
-        Util.sysout 1 ("current FO clause labels  = " ^
-                         String.concat ", " current_clauses_labels ^ "\n");
-      END;
+      if Build_config.debug then
+        begin
+          Util.sysout 1 ("previous FO clause labels = " ^
+          String.concat ", " !prev_fo_clauses ^ "\n");
+          Util.sysout 1 ("current FO clause labels  = " ^
+          String.concat ", " current_clauses_labels ^ "\n")
+        end;
       if current_clauses_labels = !prev_fo_clauses then
         begin
-          IFDEF DEBUG THEN
-            Util.sysout 1 "Avoided redundant call to ATP";
-          END;
+          if Build_config.debug then Util.sysout 1 "Avoided redundant call to ATP";
           next_atp_call_is_redundant := true
         end
       else

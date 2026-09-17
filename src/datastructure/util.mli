@@ -30,11 +30,7 @@ module StringSet :
     val choose : t -> elt
     val split : elt -> t -> t * bool * t
   end
-IFDEF DEBUG THEN
-val tmpfiles : string list ref
-ELSE
 val tmpfiles : StringSet.t ref
-END
 val register_tmpfile : string -> unit
 val register_tmpfiles : string list -> unit
 

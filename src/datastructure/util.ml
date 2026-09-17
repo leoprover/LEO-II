@@ -2,27 +2,16 @@ let debuglevel = ref 0
 
 module StringSet = Set.Make(String)
 
-IFDEF DEBUG THEN
-let (tmpfiles : string list ref) = ref []
-ELSE
 let (tmpfiles : StringSet.t ref) = ref StringSet.empty
-END
 (*FIXME if child process are creating files, and run in parallel,
   then should distinguish files by using e.g. PID*)
 let register_tmpfile file =
   let warn_s = "\nWARNING register_tmpfile applied again to " ^ file ^ "\n"
   in
-    IFDEF DEBUG THEN
-      if List.mem file !tmpfiles then
-        prerr_endline warn_s
-      else
-        tmpfiles := file :: !tmpfiles
-    ELSE
-      if StringSet.mem file !tmpfiles then
-        prerr_endline warn_s
-      else
-        tmpfiles := StringSet.add file !tmpfiles
-    END
+    if StringSet.mem file !tmpfiles then
+      prerr_endline warn_s
+    else
+      tmpfiles := StringSet.add file !tmpfiles
 let register_tmpfiles files =
   List.iter register_tmpfile files
 (*unregister_tmpfile is not called directly from the outside --
@@ -30,17 +19,10 @@ let register_tmpfiles files =
 let unregister_tmpfile file =
   let warn_s = "\nWARNING is unregister_tmpfile being reapplied to " ^ file ^ " ?\n"
   in
-    IFDEF DEBUG THEN
-      if List.mem file !tmpfiles then
-        tmpfiles := List.fold_right (fun file' l -> if file = file' then l else (file' :: l)) !tmpfiles []
-      else
-        prerr_endline warn_s
-    ELSE
-      if StringSet.mem file !tmpfiles then
-        tmpfiles := StringSet.remove file !tmpfiles
-      else
-        prerr_endline warn_s
-    END
+    if StringSet.mem file !tmpfiles then
+      tmpfiles := StringSet.remove file !tmpfiles
+    else
+      prerr_endline warn_s
 
 (*FIXME can remove -tmp argument, in preference to using TMPDIR variable, like E.*)
 let tmp_path = ref (try (Sys.getenv "TMPDIR") with Not_found -> "/tmp")
@@ -61,11 +43,7 @@ let try_delete_file file =
   unregister_tmpfile file
 
 let delete_all_tmpfiles () =
-    IFDEF DEBUG THEN
-      List.iter try_delete_file !tmpfiles
-    ELSE
-      StringSet.iter try_delete_file !tmpfiles
-    END
+    StringSet.iter try_delete_file !tmpfiles
 
 let sysout n s =
   if n <= !debuglevel
@@ -199,7 +177,7 @@ let spawn cmd =
       0 ->
         ignore(Sys.signal Sys.sigchld Sys.Signal_default);
         (*create new process group and run command*)
-        IFDEF EXTUNIX THEN ExtUnix.Specific.setpgid 0 0 ELSE () END;
+        Build_config.setpgid_self ();
         let split_cmd = Str.split (Str.regexp " ") cmd
         in (try (Unix.execv (List.hd split_cmd) (Array.of_list split_cmd))
             with Unix.Unix_error (err, f, rest) ->

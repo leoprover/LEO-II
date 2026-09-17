@@ -222,9 +222,7 @@ let rec apptermCNF_to_cnf_literal p_n ta : sublit_t =
               None -> ()
             | Some p_id ->
                 if List.mem_assoc s !guard then
-                  IFDEF DEBUG THEN
-                    assert(p_id = List.assoc s !guard)
-                  END
+                  if Build_config.debug then assert(p_id = List.assoc s !guard)
                 else
                   guard := (s, p_id) :: !guard
         end;
@@ -261,10 +259,11 @@ let rec apptermCNF_to_cnf_disj ta : literal list =
         raise (APP_TERM ("Such a term should not be here", ta))
     (*negative literals*)
     | App (Const ("~", _), [Const (c, _)]) ->
-        IFDEF DEBUG THEN
-          (*nullary predicate -- can't be equality*)
-          assert (c <> "=")
-        END;
+        if Build_config.debug then
+          begin
+            (*nullary predicate -- can't be equality*)
+            assert (c <> "=")
+          end;
         add_guard false c []
     | App (Const ("~", _), [App (Const (c, _), tas)]) ->
         add_guard false c tas
@@ -281,10 +280,11 @@ let rec apptermCNF_to_cnf_disj ta : literal list =
         add_guard false appK tas
     (*positive literals*)
     | Const (c, _) ->
-        IFDEF DEBUG THEN
-          (*nullary predicate -- can't be equality*)
-          assert (c <> "=")
-        END;
+        if Build_config.debug then
+          begin
+            (*nullary predicate -- can't be equality*)
+            assert (c <> "=")
+          end;
         add_guard true c []
     | App (Const (c, _), tas) ->
         add_guard true c tas
@@ -410,10 +410,11 @@ let analysis (st : State.state) : (string * af) list -> decoration_pred = fun cl
     |> appterm_to_minisatProblem in
   let check_mono_of ty =
     let prob = minisat_prob ty in
-      IFDEF DEBUG THEN
-        Util.sysout 1 ("\nChecking " ^ Hol_type.to_string ty ^
-                         "; clauses = " ^ string_of_int (List.length prob));
-      END;
+      if Build_config.debug then
+        begin
+          Util.sysout 1 ("\nChecking " ^ Hol_type.to_string ty ^
+          "; clauses = " ^ string_of_int (List.length prob))
+        end;
       Minisatinterface.minisat_init (10 (* List.length !pred_dict *));
       List.iter
         (fun cl ->
@@ -421,9 +422,7 @@ let analysis (st : State.state) : (string * af) list -> decoration_pred = fun cl
            ignore(Minisatinterface.minisat_addClause ()))
         prob;
       let result = Minisatinterface.minisat_search () in
-        IFDEF DEBUG THEN
-          Util.sysout 1 ("; mono=" ^ string_of_bool result);
-        END;
+        if Build_config.debug then Util.sysout 1 ("; mono=" ^ string_of_bool result);
         result in
   let types =
     Signature.all_fixed_basetypes st.signature

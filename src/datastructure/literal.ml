@@ -47,9 +47,7 @@ let lit_weight l = l.lit_weight
 let lit_info l = l.lit_info
 
 let lit_mk_literal sigma xt b i =
-  IFDEF DEBUG THEN
-    assert ((Term.type_of (Signature.type_of_symbol sigma) (xterm2term xt)) = bt_o);
-  END;
+  if Build_config.debug then assert ((Term.type_of (Signature.type_of_symbol sigma) (xterm2term xt)) = bt_o);
   {lit_term = xt;
    lit_polarity = b;
    lit_weight = !(Orderings.weighting_hook) (xterm2term xt);

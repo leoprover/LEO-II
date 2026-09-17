@@ -12,7 +12,7 @@ exception NO_ORDER_INFO
 exception ORDERINGS of string
 
 type order = Greater | Equal | Unknown
-type precedence 'a = ('a * order * 'a) list
+type 'a precedence = ('a * order * 'a) list
 
 type status = Lex | Multi
 

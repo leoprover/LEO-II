@@ -15,6 +15,9 @@ let curry f (x1, x2) = f x1 x2
 let (~+) f x = (x, f x)
 let default y f x = try f x with _ -> y
 exception NO_SOME
+
+(*raised by list_split_at when the list is shorter than the split point*)
+exception List_split_at
 let the x = match x with Some y -> y | None -> raise NO_SOME
 let eq x y = x = y
 let rec list_subtract l1 l2 = (*FIXME naive*)
@@ -44,7 +47,7 @@ let map_fold f g g' x l =
 let list_split_at n l =
   let rec list_split_at' n l left =
     if n = 0 then (left, l)
-    else if l = [] then raise (Failure "list_split_at")
+    else if l = [] then raise List_split_at
     else
       list_split_at' (n - 1) (List.tl l) (List.hd l :: left)
   in
@@ -138,7 +141,7 @@ let match_type ?(acc = []) ty1 ty2 =
                   if dest_basetype ty2 = s1 then acc
                   else raise (complain ty1 ty2)
                 with
-                    Failure "dest_basetype" ->
+                    Hol_type.Dest_basetype ->
                       (*ty2 must have been a Funtype*)
                       raise (complain ty1 ty2)
               end
