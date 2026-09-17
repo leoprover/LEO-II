@@ -240,6 +240,7 @@ opt:
 	make build-config
 	make clean
 	make optmain
+	@mv ../bin/leo.opt ../bin/leo 2> /dev/null
 
 # Checks of the term order against the worked examples of the paper that
 # introduced it.  Run after "make opt".
@@ -249,7 +250,6 @@ ncpo_test: ../test/ncpo_test.ml
 	  datastructure/position.cmx datastructure/hol_type.cmx datastructure/term.cmx \
 	  datastructure/ncpo.cmx ../test/ncpo_test.ml
 	../test/ncpo_test
-	@mv ../bin/leo.opt ../bin/leo 2> /dev/null
 
 profile:
 	make opt OPT_P_FLAG=-p
