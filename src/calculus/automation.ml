@@ -440,7 +440,7 @@ let atp_mains =
           "-l 1"
         else "-l 0" in
       let unix_options = if Sys.os_type = "Unix" then "--memory-limit=Auto" else "" in
-      let options = "--tstp-in --proof-object=1 -xAuto -tAuto --cpu-limit=" ^ 
+      let options = "--tstp-in --proof-object=1 --auto --cpu-limit=" ^ 
           string_of_int st.flags.atp_timeout ^ " " ^ unix_options in
       let call_string = (prover ^ " " ^ options ^ " " ^ output_options) in
       let fo_clauses = get_fo_clauses st in
