@@ -297,10 +297,7 @@ let indexedclauses_to_explicitlist clauseset =
                  cl_litarray =
                   Array.map
                     (fun l ->
-                       {lit_term = Explicit (xterm2term l.lit_term);
-                        lit_polarity = l.lit_polarity;
-                        lit_weight = l.lit_weight;
-                        lit_info = l.lit_info})
+                       {l with lit_term = Explicit (xterm2term l.lit_term)})
                     cl.cl_litarray;}) (Set_of_clauses.elements clauseset)
 
 let state_reset (ls : state) =

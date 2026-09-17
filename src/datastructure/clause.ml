@@ -76,6 +76,7 @@ type cl_clause = {
     cl_litarray : cl_literals; 
     cl_max_lit_num: cl_max_lit_num;  (* number of maximal literals in clause *)
     cl_weight : cl_weight;
+    cl_size : cl_weight;  (* for clause selection only *)
     cl_free_vars : term list;  
     cl_info : cl_info;
     cl_origin : cl_origin
@@ -160,6 +161,10 @@ let cl_mk_clause (litlist : role lit_literal list) (int : int) (free_vars : term
           List.fold_left (fun i1 i2 -> i1 + i2) 0 (List.map lit_weight litlist);
       *)
       cl_weight = sum;
+      (* The size is what given-clause selection compares.  It is kept apart
+         from cl_weight because cl_weight, through the literal weights it sums,
+         also decides which literals count as maximal. *)
+      cl_size = List.fold_left (fun acc l -> acc + lit_size l) 0 litlist;
       cl_free_vars = free_vars;
       cl_info = info;
       cl_origin = origin

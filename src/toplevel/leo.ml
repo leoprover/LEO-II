@@ -55,6 +55,7 @@ type arg =
   | VERBOSE
   | VERSION
   | ORDERING of string
+  | AGEWEIGHT of int
   | WRITEFOCLAUSES
 
 let help () = print_string ("\
@@ -95,6 +96,7 @@ let help () = print_string ("\
      --notUseExtCnfCmbd, -nux   Do not use the extcnf_combined rule \n \
      --order ORDERING           Use ORDERING\n\tAvailable options: " ^
                                 String.concat ", " (List.map Orderings.ordering_to_string Orderings.available_orderings) ^ "\n \
+     --ageWeightRatio N         Take one given clause by age in every N; 1 is first in first out\n \
      --scriptmode, -s           Start script mode\n \
      --sos, -S                  (this flag is currently deactivated, don't use)\n \
      --timeout N, -t N          Enforce timeout after N seconds\n \
@@ -223,6 +225,8 @@ let rec parse_cl cs ps =
         parse_cl xs (VERSION :: ps)
     | "--order" :: xs ->
         parse_cl (tl xs) (ORDERING (get_cl_string (hd cs) xs) :: ps)
+    | "--ageWeightRatio" :: xs ->
+        parse_cl (tl xs) (AGEWEIGHT (get_cl_int (hd cs) xs) :: ps)
     | "-w" :: xs
     | "--writeFOclauses" :: xs ->
         parse_cl xs (WRITEFOCLAUSES :: ps)
@@ -512,6 +516,10 @@ let rec process args = match args with
       process args
   | VERSION :: args ->
       version ()
+  | AGEWEIGHT n :: args ->
+      if n < 1 then error "--ageWeightRatio needs a positive argument";
+      Clauseset.age_weight_ratio := n;
+      process args
   | ORDERING s :: args ->
       ignore(State.set_flag_termorder
                State.state_initialize

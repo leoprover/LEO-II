@@ -45,3 +45,10 @@ val cl_clauseset_to_string :  Set_of_clauses.t -> string
 val list_to_set : Clause.cl_clause list -> Set_of_clauses.t
 
 val ratio_strategy : Clause.cl_clause -> Clause.cl_clause -> int
+
+val age_weight_ratio : int ref
+(** One given clause is taken by age in every this many selections, the rest by
+    weight.  1 selects by age alone, which is first in first out. *)
+
+val select : Set_of_clauses.t -> Clause.cl_clause
+(** The next clause to work on.  Raises [Not_found] on an empty set. *)

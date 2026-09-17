@@ -23,6 +23,7 @@ type term =
 val alpha_equiv : term -> term -> bool
 
 val compare : term -> term -> int
+(** A total order on terms, structural and lexicographic. *)
 
 (** {6 Operations on Terms} *)
 

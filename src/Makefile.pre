@@ -67,6 +67,8 @@ SOURCES=general/build_config.ml \
 	datastructure/hol_type.ml \
 	datastructure/term.mli \
 	datastructure/term.ml \
+	datastructure/ncpo.mli \
+	datastructure/ncpo.ml \
 	datastructure/signature.mli \
 	datastructure/signature.ml \
 	general/general.ml \
@@ -238,6 +240,15 @@ opt:
 	make build-config
 	make clean
 	make optmain
+
+# Checks of the term order against the worked examples of the paper that
+# introduced it.  Run after "make opt".
+ncpo_test: ../test/ncpo_test.ml
+	$(OCAMLOPT) $(INCLUDES) -o ../test/ncpo_test unix.cmxa str.cmxa \
+	  general/build_config.cmx datastructure/darray.cmx datastructure/util.cmx \
+	  datastructure/position.cmx datastructure/hol_type.cmx datastructure/term.cmx \
+	  datastructure/ncpo.cmx ../test/ncpo_test.ml
+	../test/ncpo_test
 	@mv ../bin/leo.opt ../bin/leo 2> /dev/null
 
 profile:

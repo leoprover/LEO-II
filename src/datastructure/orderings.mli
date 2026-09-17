@@ -44,7 +44,21 @@ module type TERM_TYPE =
     val free_vars : t -> string list
   end
 
-type ordering = None | Naive | Simple | CPO
+(** A setting selects two things: a term weight, which clause selection uses
+    and which must be total and cheap, and an orientation order, which is
+    decided one pair at a time and may leave a pair undecided.  They are
+    separate because the orientation order is not known to be transitive and
+    therefore cannot order a set of clauses.
+
+    - [None] gives every term the same weight and orients nothing, which is
+      what LEO-II did up to 1.7.
+    - [Naive] weighs by a precedence read off the signature.
+    - [Weight] counts symbols.  Over the ontological-argument problems of
+      Benzmüller and Scott it proves as many as [None] does and no more, so it
+      is offered rather than imposed: [None] remains the default.
+    - [Ncpo] counts symbols and adds the computability path order of
+      {!Ncpo} as the orientation order. *)
+type ordering = None | Naive | Weight | Ncpo | Simple | CPO
 
 val available_orderings : ordering list
 val ordering_of_string : string -> ordering
@@ -60,6 +74,7 @@ module TermOrderingFunctor :
 
       (** weighting functions **)
       val allTermsEqual : term -> int
+      val symbol_count : int -> int -> term -> int
       val constVars_typeConsts_offsetAbs_addApp : int -> int -> term -> int
 
       (** ordering functions **)
@@ -74,8 +89,20 @@ module TermOrderingFunctor :
 module ExplicitTerm : TERM_TYPE with type t = Term.term
 (* module TermsetTerm : TERM_TYPE with type t = Termset.id *)
 
-(*val ordering_hook : (Term.term -> Term.term -> bool) ref*)
 val weighting_hook : (Term.term -> int) ref
+(** The literal weight.  The calculus reads it: a clause's literals are sorted
+    by it and the number carrying the maximum bounds factorisation, so changing
+    it changes which inferences are performed. *)
+
+val selection_weight_hook : (Term.term -> int) ref
+(** The term weight behind the clause size that given-clause selection uses.
+    Nothing in the calculus reads it, so it is free to be informative. *)
+
+val term_order_hook : (Term.term -> Term.term -> bool) ref
+(** The orientation order, asked about one pair at a time.  False in both
+    directions means the pair is not oriented and the caller must do nothing.
+    Never hand this to a sorting function: the order behind it is not known to
+    be transitive. *)
 val set_ord : ordering -> unit
 
 

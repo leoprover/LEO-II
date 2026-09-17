@@ -63,6 +63,7 @@ type cl_clause = {
     cl_litarray : cl_literals;
     cl_max_lit_num: cl_max_lit_num;
     cl_weight : cl_weight;
+    cl_size : cl_weight;  (* for clause selection only *)
     cl_free_vars : term list;  
     cl_info : cl_info;
     cl_origin : cl_origin

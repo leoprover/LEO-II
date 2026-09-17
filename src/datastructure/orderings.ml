@@ -97,13 +97,20 @@ let get_next_fresh_var () =
    embedding of terms/literals/clauses into nat, but that's not
    sufficiently general.
 *)
-type ordering = None | Naive | Simple | CPO
+(* What a setting selects is a pair: a term weight, which clause selection
+   uses and which must be total and cheap, and an orientation order, which is
+   pairwise and may leave a pair undecided.  The two jobs are separate because
+   the orientation order is not known to be transitive and so cannot be used
+   to order a set of clauses. *)
+type ordering = None | Naive | Weight | Ncpo | Simple | CPO
 
-let available_orderings = [None; Naive]
+let available_orderings = [None; Naive; Weight; Ncpo]
 
 let ordering_of_string = function
   | "none" -> None
   | "naive" -> Naive
+  | "weight" -> Weight
+  | "ncpo" -> Ncpo
   | "simple" -> Simple
   | "cpo" -> CPO
   | s -> failwith ("Unrecognised ordering: " ^ s)
@@ -111,6 +118,8 @@ let ordering_of_string = function
 let ordering_to_string = function
   | None -> "none"
   | Naive -> "naive"
+  | Weight -> "weight"
+  | Ncpo -> "ncpo"
   | Simple -> "simple"
   | CPO -> "cpo"
 
@@ -121,6 +130,7 @@ sig
 
   (** weighting functions **)
   val allTermsEqual : term -> int
+  val symbol_count : int -> int -> term -> int
   val constVars_typeConsts_offsetAbs_addApp : int -> int -> term -> int
 
   (** ordering functions **)
@@ -144,6 +154,25 @@ struct
 
   (*emulates constant weights used up to, and including, rev. 1545*)
   let allTermsEqual _ = 1
+
+  (* A symbol-counting weight.  Every constant costs const_weight, every
+     variable var_weight, an application the sum of its parts, an abstraction
+     one constant more than its body.  Variables are cheaper than constants so
+     that a general clause weighs less than a specific one, as is usual.
+
+     This is what clause selection needs and what allTermsEqual, which gives
+     every term the same weight, cannot provide. *)
+  let rec symbol_count var_weight const_weight t =
+    if Termstruct.is_var t then var_weight
+    else if Termstruct.is_symbol t then const_weight
+    else if Termstruct.is_appl t then
+      let (t1, t2) = Termstruct.dest_appl t in
+        symbol_count var_weight const_weight t1
+        + symbol_count var_weight const_weight t2
+    else if Termstruct.is_abstr t then
+      let (_, _, body) = Termstruct.dest_abstr t in
+        const_weight + symbol_count var_weight const_weight body
+    else const_weight
 
   (*emulates the (unused) term_weight which existed in module Term until r1545*)
   let rec eqSym_incAbs_addApp t =
@@ -193,25 +222,19 @@ struct
               if compare_arg <> 0 then compare_arg
               else arity_prec ty1b ty2b in
     let cmp_typing ((_, ty1) : string * hol_type) (_, ty2) : int = arity_prec ty1 ty2 in
+    (* The ranks are computed once per signature rather than once per symbol
+       lookup.  Sorting the whole signature inside the lookup, as this did,
+       made the weight of a term quadratic in the size of the signature. *)
+    let ranks =
+      let table = Hashtbl.create 97 in
+      let ordered = List.sort cmp_typing !symbol_typings in
+        List.iteri (fun i (s, _) -> if not (Hashtbl.mem table s) then Hashtbl.add table s (i + 1))
+          ordered;
+        table in
     let signature_precedence : symbolorder = fun s ->
       if List.mem s Signature.interpreted_constants then 10 (*FIXME interpreted symbols -- how to handle?*)
       else
-        (* let symbol_typings = Signature.all_uninterpreted_symbols st.signature in *)
-        let ordered_symbol_typings = List.sort cmp_typing !symbol_typings(*FIXME hack*) in
-        let (found, idx) =
-          List.fold_right
-            (fun (s', _) ((found, idx) as result) ->
-               if found then result
-               else (s = s', idx + 1))
-            ordered_symbol_typings
-            (false, -1)
-        in
-          if Build_config.debug then
-            begin
-              assert found;
-              if found then idx + 1 else unk_const_weight
-            end
-          else idx + 1
+        try Hashtbl.find ranks s with Not_found -> unk_const_weight
     in constVars_offsetAbs_addApp signature_precedence var_weight unk_const_weight abs_offset t
 
   (*Typed-based weighting of terms, which doesn't descend through terms
@@ -512,11 +535,49 @@ end
 
 (*FIXME hack, need to reorganise module dependencies*)
 module Ords = TermOrderingFunctor(ExplicitTerm)
+(* The literal weight.  The calculus reads it: cl_mk_clause sorts a clause's
+   literals by it and counts how many carry the maximum, and that count
+   restricts factorisation.  Changing it therefore changes which inferences are
+   performed, not merely their order, so it stays at the constant weight LEO-II
+   has always used unless a setting deliberately says otherwise. *)
 let weighting_hook : (Ords.term -> int) ref = ref (fun _ -> failwith "Undefined term weighting")
+
+(* The selection weight.  Only clause selection reads it, so it is free to be
+   informative. *)
+let selection_weight_hook : (Ords.term -> int) ref = ref (fun _ -> 1)
+
+(* The orientation order, asked about one pair at a time.  It answers false in
+   both directions for a pair it cannot orient, and every caller must be
+   prepared to do nothing in that case.  It must never be handed to a sorting
+   function: see ncpo.mli. *)
+let term_order_hook : (Ords.term -> Ords.term -> bool) ref = ref (fun _ _ -> false)
+
+let ncpo_params () =
+  let typing s =
+    try List.assoc s !symbol_typings with Not_found -> Basetype "'A"
+  in Ncpo.default_params typing
+
 let set_ord ordering =
   match (*State.get_flag_termweight State.state_initialize*) ordering with (*FIXME hack, using lax state management in Leo*)
-    | None -> weighting_hook := Ords.allTermsEqual
-    | Naive -> weighting_hook := Ords.constVars_typeConsts_offsetAbs_addApp 3 1
+    | None ->
+        weighting_hook := Ords.allTermsEqual;
+        selection_weight_hook := Ords.allTermsEqual;
+        term_order_hook := (fun _ _ -> false)
+    | Naive ->
+        (* This one does change the literal weight, and with it the maximal
+           literals, which is why it has never been the default. *)
+        weighting_hook := Ords.constVars_typeConsts_offsetAbs_addApp 3 1;
+        selection_weight_hook := Ords.constVars_typeConsts_offsetAbs_addApp 3 1;
+        term_order_hook := (fun _ _ -> false)
+    | Weight ->
+        weighting_hook := Ords.allTermsEqual;
+        selection_weight_hook := Ords.symbol_count 1 2;
+        term_order_hook := (fun _ _ -> false)
+    | Ncpo ->
+        weighting_hook := Ords.allTermsEqual;
+        selection_weight_hook := Ords.symbol_count 1 2;
+        let p = ncpo_params () in
+          term_order_hook := (fun s t -> Ncpo.gt p s t)
     | _ -> raise (ORDERINGS "Unsupported ordering")
 
 (*FIXME above approach is very limited. Should generalise to something of the following form:

@@ -37,6 +37,7 @@ type 'a lit_literal = {
   lit_term : 'a xterm;  (* terms are pointers to the termset *)
   lit_polarity : lit_polarity;
   lit_weight : lit_weight;
+  lit_size : lit_weight;  (* for clause selection only; see Orderings *)
   lit_info : lit_info;
   } 
 
@@ -44,6 +45,7 @@ type 'a lit_literal = {
 let lit_term l = l.lit_term
 let lit_polarity l = l.lit_polarity
 let lit_weight l = l.lit_weight
+let lit_size l = l.lit_size
 let lit_info l = l.lit_info
 
 let lit_mk_literal sigma xt b i =
@@ -51,6 +53,7 @@ let lit_mk_literal sigma xt b i =
   {lit_term = xt;
    lit_polarity = b;
    lit_weight = !(Orderings.weighting_hook) (xterm2term xt);
+   lit_size = !(Orderings.selection_weight_hook) (xterm2term xt);
    lit_info = i }
 
 let lit_mk_pos_literal sigma xt =

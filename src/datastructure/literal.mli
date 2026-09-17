@@ -35,6 +35,7 @@ type 'a lit_literal = {
   lit_term : 'a xterm;
   lit_polarity : lit_polarity;
   lit_weight : lit_weight;
+  lit_size : lit_weight;  (* for clause selection only; see Orderings *)
   lit_info : lit_info;
   } 
 
@@ -46,6 +47,7 @@ val lit_term : 'a lit_literal -> 'a xterm
 val lit_polarity : 'a lit_literal -> lit_polarity
 
 val lit_weight : 'a lit_literal -> lit_weight
+val lit_size : 'a lit_literal -> lit_weight
 
 val lit_info : 'a lit_literal -> lit_info
 

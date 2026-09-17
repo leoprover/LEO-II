@@ -67,6 +67,8 @@ SOURCES=general/build_config.ml \
 	datastructure/hol_type.ml \
 	datastructure/term.mli \
 	datastructure/term.ml \
+	datastructure/ncpo.mli \
+	datastructure/ncpo.ml \
 	datastructure/signature.mli \
 	datastructure/signature.ml \
 	general/general.ml \

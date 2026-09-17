@@ -1020,20 +1020,17 @@ let choose_and_remove_lightest_from_active (st : state) =
       raise ACTIVE_EMPTY
     end
   else
-    let lightest = Set_of_clauses.min_elt st.active
+    let lightest = Clauseset.select st.active
     in
       begin
-        if Build_config.debug then Util.sysout 2 ("\n Lightest Clause : " ^ cl_clause_to_string lightest);
-        (* destructive removal of lightest from active *)
-        let length1 = List.length (Set_of_clauses.elements st.active) in 
-        let _ = set_active st (Set_of_clauses.remove lightest st.active) in 
-        let length2 = List.length (Set_of_clauses.elements st.active) in 
-          if (length2 >= length1) then
-            begin
-              Util.sysout 0 ("\n CLAUSE-REMOVAL-PROBLEM: "^(cl_clause_to_string lightest));
-              Util.sysout 0 ("\n lightest \\in Active: " ^ string_of_bool (Set_of_clauses.mem lightest st.active));
-              Util.sysout 0 ("\n compare lightest lightest: " ^ string_of_int (Clauseset.ratio_strategy lightest lightest))
-            end;
+        if Build_config.debug then Util.sysout 2 ("\n Given Clause : " ^ cl_clause_to_string lightest);
+        (* destructive removal of the given clause from active.  The set is
+           ordered by clause number, so the removal cannot miss; the cardinals
+           are compared only in a debug build. *)
+        let before = if Build_config.debug then Set_of_clauses.cardinal st.active else 0 in
+        let _ = set_active st (Set_of_clauses.remove lightest st.active) in
+          if Build_config.debug && Set_of_clauses.cardinal st.active >= before then
+            Util.sysout 0 ("\n CLAUSE-REMOVAL-PROBLEM: " ^ cl_clause_to_string lightest);
           lightest
       end
 

@@ -39,13 +39,26 @@ let rec term_weighting t =
     | Appl (t1, t2) -> term_weighting t1 + term_weighting t2
     | Abstr (_, ty, t') -> 1 + Hol_type.type_ordering ty + term_weighting t'
 
-let compare t1 t2 =
-  let w1 = term_weighting t1 in
-  let w2 = term_weighting t2
-  in
-    if w1 = w2 then 0
-    else if w1 < w2 then -1
-    else 1
+(* A total order on terms: structural, lexicographic, with symbols before
+   applications before abstractions.  It used to compare term weights alone,
+   which made distinct terms of equal weight compare equal, so that a set or
+   map keyed on it silently dropped elements. *)
+let rec compare t1 t2 =
+  match (t1, t2) with
+      (Symbol x, Symbol y) -> String.compare x y
+    | (Symbol _, _) -> -1
+    | (_, Symbol _) -> 1
+    | (Appl (a1, b1), Appl (a2, b2)) ->
+        let c = compare a1 a2 in
+          if c <> 0 then c else compare b1 b2
+    | (Appl _, Abstr _) -> -1
+    | (Abstr _, Appl _) -> 1
+    | (Abstr (v1, ty1, b1), Abstr (v2, ty2, b2)) ->
+        let c = compare v1 v2 in
+          if c <> 0 then c
+          else
+            let c = Hol_type.compare ty1 ty2 in
+              if c <> 0 then c else compare b1 b2
 
 let is_symbol = function
     Symbol _ -> true
