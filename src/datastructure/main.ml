@@ -233,7 +233,7 @@ let rec create_and_insert_skolem_const (t:term) (ty:hol_type) (st:state) =
     Symbol n -> 
       (* let newsym = ("sK"^(string_of_int (inc_skolem_const_count st))) in *)
       let newsym = ("sK"^(string_of_int (inc_skolem_const_count st))^"_"^n) in 
-      let _ =  Util.sysout 3 ("\n New Skolem term: "^newsym^" Type: "^(to_string ty)) in
+      let _ =  Util.sysoutf 3 (fun () -> ("\n New Skolem term: "^newsym^" Type: "^(to_string ty))) in
       if is_defined_symbol st.signature newsym || is_uninterpreted_symbol st.signature newsym
       then create_and_insert_skolem_const t ty st  (* new try with increased symbol counter *)
       else 
@@ -267,7 +267,7 @@ let rec create_new_bound_var_with_simple_name (ty:hol_type) (st:state) =
 
 
 let rename_bound_vars t st =
-  Util.sysout 1 ("\n rename_bound_vars term : "^(Term.to_hotptp t));
+  Util.sysoutf 1 (fun () -> ("\n rename_bound_vars term : "^(Term.to_hotptp t)));
   let rec help t = 
     match t with
 	Appl(t1,t2) -> (Appl(help t1,help t2))
@@ -277,7 +277,7 @@ let rename_bound_vars t st =
       | t -> t
   in
   let res = help t in
-    Util.sysout 1 ("\n res rename_bound_vars term : "^(Term.to_hotptp res));
+    Util.sysoutf 1 (fun () -> ("\n res rename_bound_vars term : "^(Term.to_hotptp res)));
     res
 *)
 
@@ -292,9 +292,9 @@ let expand_all_defined_logical_symbols_in_term t (st:state) =
   subst_symbols defined_logic_symbols t
 
 let rec receive_type_info t pairlist st =
-  Util.sysout 4 ("\n   enter receive_type_info : "^(Term.to_hotptp t)^" "^
+  Util.sysoutf 4 (fun () -> ("\n   enter receive_type_info : "^(Term.to_hotptp t)^" "^
                    (List.fold_right
-                      (fun (v,ty) ll -> ((Term.to_hotptp v)^":"^(to_string ty)^" "^ll)) pairlist ""));
+                      (fun (v,ty) ll -> ((Term.to_hotptp v)^":"^(to_string ty)^" "^ll)) pairlist "")));
   let result =
     match t with 
         Symbol _ ->         
@@ -322,7 +322,7 @@ let rec receive_type_info t pairlist st =
           let vty = ty in
             Funtype(vty,tty) 
   in
-    Util.sysout 4 ("\n   leave receive_type_info : "^(to_string result));
+    Util.sysoutf 4 (fun () -> ("\n   leave receive_type_info : "^(to_string result)));
     result
 
 let rec remove_type_info v pairlist =
@@ -355,9 +355,9 @@ let rec combine_pairlists pairlist1 pairlist2 =
             
 let ground_poly_syms t st =
   let rec help t pairlist st =
-    Util.sysout 4 ("\n  enter help : "^(Term.to_hotptp t)^" "^
+    Util.sysoutf 4 (fun () -> ("\n  enter help : "^(Term.to_hotptp t)^" "^
                      (List.fold_right
-                        (fun (v,ty) ll -> ((Term.to_hotptp v)^":"^(to_string ty)^" "^ll)) pairlist ""));
+                        (fun (v,ty) ll -> ((Term.to_hotptp v)^":"^(to_string ty)^" "^ll)) pairlist "")));
     let (resterm,respairlist) =
       match t with 
           Symbol _ -> (t,pairlist) 
@@ -393,25 +393,25 @@ let ground_poly_syms t st =
               let (t1',newpairlist1) = (help t1 ((x,ty)::pairlist) st) in 
                 ((Abstr(x,ty,t1')),remove_type_info x newpairlist1)
     in     
-      Util.sysout 4 ("\n  leave help : "^(Term.to_hotptp resterm)^" "^
+      Util.sysoutf 4 (fun () -> ("\n  leave help : "^(Term.to_hotptp resterm)^" "^
                        (List.fold_right
-                          (fun (v,ty) ll -> ((Term.to_hotptp v)^":"^(to_string ty)^" "^ll)) respairlist ""));
+                          (fun (v,ty) ll -> ((Term.to_hotptp v)^":"^(to_string ty)^" "^ll)) respairlist "")));
       (resterm,respairlist)
   in 
-    Util.sysout 4 ("\n enter ground_poly_syms : "^(Term.to_hotptp t));
+    Util.sysoutf 4 (fun () -> ("\n enter ground_poly_syms : "^(Term.to_hotptp t)));
     let (t',_) = help t [] st in
-      Util.sysout 4 ("\n leave ground_poly_syms : "^(Term.to_hotptp t'));      
+      Util.sysoutf 4 (fun () -> ("\n leave ground_poly_syms : "^(Term.to_hotptp t')));      
       t'
 
 let rec unfold_logical_defs t (st:state) =
-  Util.sysout 4 ("\n unfold_logical_defs term : "^(Term.to_hotptp t));
+  Util.sysoutf 4 (fun () -> ("\n unfold_logical_defs term : "^(Term.to_hotptp t)));
   let old_t = t 
   and new_t = expand_all_defined_logical_symbols_in_term t st in
     if old_t = new_t 
     then
       begin
         let res = ground_poly_syms new_t st in
-	        Util.sysout 4 ("\n res unfold_logical_defs term : "^(Term.to_hotptp res));
+	        Util.sysoutf 4 (fun () -> ("\n res unfold_logical_defs term : "^(Term.to_hotptp res)));
 	        res
       end
     else unfold_logical_defs new_t st 
@@ -428,13 +428,13 @@ let expand_all_defined_nonlogical_symbols_in_term t (st:state) =
 
 
 let rec unfold_nonlogical_defs t (st:state) =
-  Util.sysout 3 ("\n unfold_nonlogical_defs term : "^(Term.to_hotptp t));
+  Util.sysoutf 3 (fun () -> ("\n unfold_nonlogical_defs term : "^(Term.to_hotptp t)));
   let old_t = t 
   and new_t = expand_all_defined_nonlogical_symbols_in_term t st in
     if old_t = new_t 
     then
       (  
-	Util.sysout 3 ("\n res unfold_nonlogical_defs term : "^(Term.to_hotptp new_t));
+	Util.sysoutf 3 (fun () -> ("\n res unfold_nonlogical_defs term : "^(Term.to_hotptp new_t)));
 	new_t 
       )
     else unfold_nonlogical_defs new_t st 
@@ -612,7 +612,7 @@ let rec translate_term_2 term argtype =
 	    let varlist_str = translate_varlist_2_help free_vars in
 	      "leoTi("^abs_string^"("^varlist_str^")"^","^ty^")" 
 	in
-	  Util.sysout 3 ("\n Abstr: "^(Term.to_string  (Abstr(x1,tp,t1))));
+	  Util.sysoutf 3 (fun () -> ("\n Abstr: "^(Term.to_string  (Abstr(x1,tp,t1)))));
 	  Util.sysout 3 ("\n Trans: "^res);
 	  res
        )
@@ -647,18 +647,18 @@ let cl_clause_to_fotptp_cnf_2 (st:state) (clause:cl_clause) =
     and clause_name = (* ("leo_II_clause_"^(string_of_int clause.cl_number)) *)
          (string_of_int clause.cl_number)
     in [(clause_name,("\n fof("^clause_name^",axiom,"^free_vars_string^"("^litstring^"))."))]
-  with To_fotptp_cnf -> (Util.sysout 3 ("\n No FOF translation for clause "^(cl_clause_to_string clause)); [])
+  with To_fotptp_cnf -> (Util.sysoutf 3 (fun () -> ("\n No FOF translation for clause "^(cl_clause_to_string clause))); [])
 
 
 
 (** New stuff May 2012 to provide some initial translation to FOF for quick attacks with FOF ATP **)
 
 let rename_free_variable (t:role xterm) (var:role xterm) (ty:hol_type) (st:state) =
-  let _ = Util.sysout 5 ("\nEnter rename_free_variable with \n t: "^(Termsystem.to_string t)^" var: "^(Termsystem.to_string var)^" ty: "^(to_string ty)) in
+  let _ = Util.sysoutf 5 (fun () -> ("\nEnter rename_free_variable with \n t: "^(Termsystem.to_string t)^" var: "^(Termsystem.to_string var)^" ty: "^(to_string ty))) in
   let new_var = term2xterm (create_and_insert_new_free_var_with_simple_name ty st) in
-  let _ = Util.sysout 5  ("\n Inside1 rename_free_variable with \n new_var: "^(Termsystem.to_string new_var)) in
+  let _ = Util.sysoutf 5 (fun () -> ("\n Inside1 rename_free_variable with \n new_var: "^(Termsystem.to_string new_var))) in
   let subst_term = substitute st.index t [(var,new_var)] in
-  let _ = Util.sysout 5  ("\n Inside2 rename_free_variable with \n subst_term: "^(Termsystem.to_string subst_term)) in
+  let _ = Util.sysoutf 5 (fun () -> ("\n Inside2 rename_free_variable with \n subst_term: "^(Termsystem.to_string subst_term))) in
   let result =  (xterm2term subst_term,new_var) in
   let _ = Util.sysout 5 ("\nLeaving rename_free_variable\n") in
   result
@@ -668,11 +668,11 @@ let cl_clause_to_fof_simple (clause:cl_clause) (st:state) =
   let is_special_symbol s = 
     let res = List.exists (fun sym -> (sym = s)) interpreted_constants
     in  
-      Util.sysout 5 ("\n  is special "^s^" : "^(string_of_bool res));
+      Util.sysoutf 5 (fun () -> ("\n  is special "^s^" : "^(string_of_bool res)));
       res
   in
   let rec appl_to_fof_simple  (term:term) = 
-    Util.sysout 5 ("\n appl_to_fof_simple: "^(Term.to_string term));
+    Util.sysoutf 5 (fun () -> ("\n appl_to_fof_simple: "^(Term.to_string term)));
     let rec help (t:term) =
     Util.sysout 5 ("\n  help: "^(Term.to_string t));
       match t with 
@@ -703,7 +703,7 @@ let cl_clause_to_fof_simple (clause:cl_clause) (st:state) =
       res
   in
   let rec term_to_fof_simple  (term:term) = 
-    Util.sysout 5 ("\nterm_to_fof_simple: "^(Term.to_string term));
+    Util.sysoutf 5 (fun () -> ("\nterm_to_fof_simple: "^(Term.to_string term)));
     match term with 
       | Symbol s -> s
       | Appl(Symbol "~",t1) -> ("(~ "^(term_to_fof_simple t1)^")")
@@ -764,7 +764,7 @@ let cl_clause_to_fof_simple (clause:cl_clause) (st:state) =
     | [(_,trans)] -> trans
     | _ -> ""
   in
-    Util.sysout 5 ("\nclause "^(cl_clause_to_protocol clause)^" translated to"^str^"\n");
+    Util.sysoutf 5 (fun () -> ("\nclause "^(cl_clause_to_protocol clause)^" translated to"^str^"\n"));
     res
 	  
  
@@ -896,14 +896,19 @@ let cl_clause_to_fotptp_cnf_init (st:state) =
 (*Simply transfers some given of FO clauses into the state without applying
   any processing (cf. add_fo_clauses) but while ensuring that no
   duplicately-named clauses are added*)
-let add_fo_clauses_direct (st : state) =
-  List.iter
-    (fun (n, fo_cl) ->
-       try
-         ignore(List.assoc n st.fo_clauses)
-       with
-           Not_found ->
-             st.fo_clauses <- (n, fo_cl) :: st.fo_clauses)
+let add_fo_clauses_direct (st : state) new_clauses =
+  (*The names already present are collected once; asking the association list
+    for each insertion made this quadratic in the number of clauses.*)
+  let seen = Hashtbl.create 997 in
+    List.iter (fun (n, _) -> Hashtbl.replace seen n ()) st.fo_clauses;
+    List.iter
+      (fun (n, fo_cl) ->
+         if not (Hashtbl.mem seen n) then
+           begin
+             Hashtbl.replace seen n ();
+             st.fo_clauses <- (n, fo_cl) :: st.fo_clauses
+           end)
+      new_clauses
 
 let fo_clauses_init (st : state) =
   add_fo_clauses_direct st (cl_clause_to_fotptp_cnf_init st)
@@ -912,11 +917,7 @@ let add_fo_clauses (cll:cl_clause list) (st:state) =
   add_fo_clauses_direct st (List.flatten (List.map (fun c -> cl_clause_to_fotptp_cnf c st) cll))
 
 let get_fo_clauses (st:state) = 
-  List.iter
-    (fun (n, fo_cl) ->
-       try ignore(List.assoc n st.fo_clauses) with
-           Not_found ->
-             st.fo_clauses <- (n, fo_cl) :: st.fo_clauses)
+  add_fo_clauses_direct st
     (match st.flags.fo_translation with
          "kerber" -> dynamic_tertium_non_datur_axioms_1 st
        | "fully-typed" -> dynamic_tertium_non_datur_axioms_2 st
@@ -925,18 +926,21 @@ let get_fo_clauses (st:state) =
            (*In this case we're probably using one of the
              translations in the Translation module*)
            []);
-  (*Imp. to reverse the fo_cl in the string*)
-  List.fold_right (fun (_, fo_cl) s -> s ^ fo_cl) st.fo_clauses ""
+  (*Imp. to reverse the fo_cl in the string.  Concatenating with ^ inside a
+    fold copies the accumulator at every step, so assembling the translated
+    problem was quadratic in its size -- on every call to the first-order
+    prover.*)
+  String.concat "" (List.rev_map snd st.fo_clauses)
 
 let get_fo_clauses_numbers (st:state) = 
   List.fold_right (fun (n, _) l -> int_of_string n :: l) st.fo_clauses []
 
 let check_local_max_time (st:state) =
   let seconds_left = st.flags.max_local_time - (int_of_float (Sys.time ()))  in 
-    Util.sysout 1 ("<SecLeft="^(string_of_int seconds_left)^">");
+    Util.sysoutf 1 (fun () -> ("<SecLeft="^(string_of_int seconds_left)^">"));
     if seconds_left < 0 
     then 
-      let _ = Util.sysout 1 (" Running out of time, I should stop! ") in
+      let _ = Util.sysoutf 1 (fun () -> (" Running out of time, I should stop! ")) in
 	true
     else
       false
@@ -1023,14 +1027,14 @@ let choose_and_remove_lightest_from_active (st : state) =
     let lightest = Clauseset.select st.active
     in
       begin
-        if Build_config.debug then Util.sysout 2 ("\n Given Clause : " ^ cl_clause_to_string lightest);
+        if Build_config.debug then Util.sysoutf 2 (fun () -> ("\n Given Clause : " ^ cl_clause_to_string lightest));
         (* destructive removal of the given clause from active.  The set is
            ordered by clause number, so the removal cannot miss; the cardinals
            are compared only in a debug build. *)
         let before = if Build_config.debug then Set_of_clauses.cardinal st.active else 0 in
         let _ = set_active st (Set_of_clauses.remove lightest st.active) in
           if Build_config.debug && Set_of_clauses.cardinal st.active >= before then
-            Util.sysout 0 ("\n CLAUSE-REMOVAL-PROBLEM: " ^ cl_clause_to_string lightest);
+            Util.sysoutf 0 (fun () -> ("\n CLAUSE-REMOVAL-PROBLEM: " ^ cl_clause_to_string lightest));
           lightest
       end
 

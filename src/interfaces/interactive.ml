@@ -17,12 +17,12 @@ open Cmdline
 open Array
 
 let kill_children () =
-  Util.sysout 2 ("Killing child processes...(pid: " ^
+  Util.sysoutf 2 (fun () -> ("Killing child processes...(pid: " ^
     string_of_int (Unix.getpid ()) ^ " " ^
-    Sys.executable_name ^ ")\n");
-  Util.sysout 2 ("Known children pid's: " ^
+    Sys.executable_name ^ ")\n"));
+  Util.sysoutf 2 (fun () -> ("Known children pid's: " ^
     String.concat " "
-      (List.map string_of_int !Util.child_processes) ^ "\n");
+      (List.map string_of_int !Util.child_processes) ^ "\n"));
   flush stdout;
   Util.filicide_all ()
 
@@ -61,8 +61,8 @@ let handle_timeout () =
   if global_conf.interactive then
     begin
       end_timeout ();
-      Util.sysout 1 ("LEO II: timeout after " ^ string_of_int !timeout ^" seconds.\n");
-      Util.sysout 1 ("% SZS status Timeout (" ^ string_of_int !timeout ^ "sec)");
+      Util.sysoutf 1 (fun () -> ("LEO II: timeout after " ^ string_of_int !timeout ^" seconds.\n"));
+      Util.sysoutf 1 (fun () -> ("% SZS status Timeout (" ^ string_of_int !timeout ^ "sec)"));
       if !current_problem_file = "" then
         Util.sysout 1 "\n"
       else
@@ -74,7 +74,7 @@ let start_timeout () =
   if global_conf.interactive then
     if !timeout > 0 then
       begin
-        Util.sysout 1 ("LEO II: timeout set (" ^ string_of_int !timeout ^ " seconds).");
+        Util.sysoutf 1 (fun () -> ("LEO II: timeout set (" ^ string_of_int !timeout ^ " seconds)."));
         ignore(Unix.setitimer Unix.ITIMER_VIRTUAL
                  {Unix.it_interval = 0.0; Unix.it_value = float_of_int !timeout})
       end
@@ -147,7 +147,7 @@ let get_all_totals_with_atp_times_for_prefix (prefix:string) =
   List.filter
     (fun (tm,name) ->
       let res = (prefix_test prefix name) in
-      (* Util.sysout 1 ("\n Prefix? "^prefix^" "^name^" : "^(string_of_bool res)); *)
+      (* Util.sysoutf 1 (fun () -> ("\n Prefix? "^prefix^" "^name^" : "^(string_of_bool res))); *)
       res)
     (get_all_totals_with_atp_times ())
 
@@ -165,7 +165,7 @@ let cmd_boolean_ext (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set bool_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- bool --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string bool_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string bool_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -182,7 +182,7 @@ let cmd_boolean_ext_pos (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set bool_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- bool-pos --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string bool_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string bool_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -198,8 +198,8 @@ let cmd_detect_choice (st:state) args =
       index_clauselist_with_role resclauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set resclauses));
       Util.sysout 1 (cl_clause_to_string clause);
-      Util.sysout 1 ("--- detect choice (addition of choice operators to state as possible side effect) --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string resclauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("--- detect choice (addition of choice operators to state as possible side effect) --->"));
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string resclauses)^"\n"));
       true)
   with
     Failure s ->
@@ -220,7 +220,7 @@ let cmd_apply_choice (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set choiceclauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- apply choice --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string choiceclauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string choiceclauses)^"\n"));
       true)
   with
     Failure s ->
@@ -243,7 +243,7 @@ let cmd_cnf (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set cnfclauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- cnf --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string cnfclauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string cnfclauses)^"\n"));
       true)
   with
     Failure s ->
@@ -264,7 +264,7 @@ let cmd_cnf_exhaustive (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set cnfclauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- cnf-exhaustive --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string cnfclauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string cnfclauses)^"\n"));
       true)
   with
     Failure s ->
@@ -281,7 +281,7 @@ let cmd_primsubst_new (st:state) _ =
     index_clauselist_with_role newclauses st;
     set_active st (Set_of_clauses.union st.active (list_to_set newclauses));
     Util.sysout 1 ("--- prim-subst-new --->");
-    Util.sysout 1 ("\n "^(cl_clauselist_to_string newclauses)^"\n");
+    Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string newclauses)^"\n"));
     true
 
 
@@ -324,7 +324,7 @@ let cmd_standard_extcnf (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set cnfclauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- standard-extcnf --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string cnfclauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string cnfclauses)^"\n"));
       true)
   with
     Failure s ->
@@ -346,7 +346,7 @@ let cmd_dec (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set dec_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- dec --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string dec_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string dec_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -364,7 +364,7 @@ let cmd_dec_exhaustive (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set dec_ex_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- dec-exhaustive --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string dec_ex_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string dec_ex_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -382,7 +382,7 @@ let cmd_functional_ext (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set func_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- func --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string func_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -400,7 +400,7 @@ let cmd_functional_ext_exhaustive (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set func_ext_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- func-exhaustive --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string func_ext_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_ext_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -418,7 +418,7 @@ let cmd_functional_ext_pos (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set func_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- func-pos --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string func_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -436,7 +436,7 @@ let cmd_functional_ext_exhaustive_pos (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set func_ext_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- func-pos-exhaustive --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string func_ext_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_ext_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -453,7 +453,7 @@ let cmd_prim_subst (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set prim_subst_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- prim-subst --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string prim_subst_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string prim_subst_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -471,7 +471,7 @@ let cmd_replace_leibnizEQ (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set  replace_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- replace-leibnizEQ --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string replace_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string replace_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -488,7 +488,7 @@ let cmd_replace_andrewsEQ (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set replace_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- replace-andrewsEQ --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string replace_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string replace_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -548,7 +548,7 @@ let cmd_flex_rigid (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set flex_rigid_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- flex-rigid --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string flex_rigid_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string flex_rigid_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -566,7 +566,7 @@ let cmd_subst_or_clash (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set substituted_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- subst-or-clash --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string substituted_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string substituted_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -583,7 +583,7 @@ let cmd_subst_or_clash_exhaustive (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set substituted_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- subst-or-clash-exhaustive --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string substituted_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string substituted_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -603,7 +603,7 @@ let cmd_res (st:state) args =
       Util.sysout 1 (cl_clause_to_string cl1);
       Util.sysout 1 (cl_clause_to_string cl2);
       Util.sysout 1 ("--- res --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string res_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string res_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -621,7 +621,7 @@ let cmd_fac_restr (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set sim_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- fac-restr --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string sim_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string sim_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -674,7 +674,7 @@ let rec cmd_uni (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set uni_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- uni-pre-ext --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string uni_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string uni_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -691,7 +691,7 @@ let rec cmd_pre_unify (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set uni_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- uni-pre-ext --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string uni_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string uni_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -719,7 +719,7 @@ let rec cmd_pre_unify (st:state) args =
 
 let cmd_unfold_defs_exhaustive (st:state) _ =
   if (Set_of_clauses.elements st.active) = [] 
-  then (Util.sysout 1 ("\nPlease initialize problem with init_next_problem.\n"); true)
+  then (Util.sysoutf 1 (fun () -> ("\nPlease initialize problem with init_next_problem.\n")); true)
   else
     (
       Util.start_timer "Time for Definition Unfold";
@@ -737,7 +737,7 @@ let cmd_unfold_defs_exhaustive (st:state) _ =
 	
 	Util.sysout 1 (cl_clauselist_to_string oldclauses);
 	Util.sysout 1 ("--- unfold-defs --->");
-	Util.sysout 1 ("\n "^(cl_clauselist_to_string newclauses)^"\n");
+	Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string newclauses)^"\n"));
 	Util.stop_timer "Time for Definition Unfold";
 	
 	(*
@@ -750,7 +750,7 @@ let cmd_unfold_defs_exhaustive (st:state) _ =
 	  
 	  Util.sysout 1 (cl_clauselist_to_string oldclauses);
 	  Util.sysout 1 ("--- unfold-defs --->");
-	  Util.sysout 1 ("\n "^(cl_clauselist_to_string newclauses)^"\n");
+	  Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string newclauses)^"\n"));
 	  ) as "Time for Definition Unfold";
 	*)
 	List.iter (fun (time,proc) ->
@@ -770,7 +770,7 @@ let cmd_fold_node (st:state) args =
 
     Util.sysout 1 (cl_clauselist_to_string oldclauses);
     Util.sysout 1 ("--- fold-node --->");
-    Util.sysout 1 ("\n "^(cl_clauselist_to_string newclauses)^"\n");
+    Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string newclauses)^"\n"));
   true
 
 
@@ -802,11 +802,11 @@ let cmd_standard_extcnf_stack (st:state) _ =
       index_clauselist_with_role new_axioms st;
       set_problem_axioms st new_axioms;
       set_problem_stack st new_conjectures;
-      Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string axioms));
-      Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string conjectures));
+      Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string axioms)));
+      Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string conjectures)));
       Util.sysout 1 ("\n--- standard-extcnf --->\n");
-      Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms));
-      Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string st.problem_stack));
+      Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms)));
+      Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string st.problem_stack)));
       true
     )
 
@@ -842,11 +842,11 @@ let cmd_unfold_nonlogical_defs_stack (st:state) _ =
   let conjectures = st.problem_stack
   and axioms = st.problem_axioms in
     unfold_nonlogical_defs_stack st;
-    Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string axioms));
-    Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string conjectures));
+    Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string axioms)));
+    Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string conjectures)));
     Util.sysout 1 ("\n--- unfold-nonlogical --->\n");
-    Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms));
-    Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string st.problem_stack));
+    Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms)));
+    Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string st.problem_stack)));
     true
 
 
@@ -854,11 +854,11 @@ let cmd_unfold_logical_defs_stack (st:state) _ =
   let conjectures = st.problem_stack
   and axioms = st.problem_axioms in
     unfold_logical_defs_stack st;
-    Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string axioms));
-    Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string conjectures));
+    Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string axioms)));
+    Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string conjectures)));
     Util.sysout 1 ("\n--- unfold-logical --->\n");
-    Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms));
-    Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string st.problem_stack));
+    Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms)));
+    Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string st.problem_stack)));
     true
   
 
@@ -875,7 +875,7 @@ let cmd_sim (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set sim_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- sim --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string sim_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string sim_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -902,7 +902,7 @@ let cmd_triv (st:state) args =
       set_active st (Set_of_clauses.union st.active (list_to_set triv_clauses));
       Util.sysout 1 (cl_clause_to_string clause);
       Util.sysout 1 ("--- triv --->");
-      Util.sysout 1 ("\n "^(cl_clauselist_to_string triv_clauses)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string triv_clauses)^"\n"));
       true)
   with
     Failure s ->
@@ -943,7 +943,7 @@ let proof_found_subdialog (st:state) =
   if proof_found st then
     (
      Util.sysout 1 "\n*** Eureka --- Thanks to Corina --- Subproblem solved.";
-     Util.sysout 1 (" An empty clause is: "^(string_of_int  (List.hd st.empty_clauses).cl_number)^" ");
+     Util.sysoutf 1 (fun () -> (" An empty clause is: "^(string_of_int  (List.hd st.empty_clauses).cl_number)^" "));
      if (st.flags.proof_output > 0) && (!Util.debuglevel) > 1
      then print_derivation_tstp (Some ((List.hd st.empty_clauses).cl_number,"")) st
     )
@@ -971,8 +971,8 @@ let problems_notsolved_subdialog (st:state) =
 let max_clauses_subdialog (st:state) =
   if (st.flags.max_clause_count > 0 ) && (st.clause_count >= st.flags.max_clause_count) then 
   (
-   Util.sysout 1 ("\nUpper limit for clause generation in current setting: "^(string_of_int st.flags.max_clause_count));
-   Util.sysout 1 ("\nClauses generated by LEO-II so far: "^(string_of_int st.clause_count));
+   Util.sysoutf 1 (fun () -> ("\nUpper limit for clause generation in current setting: "^(string_of_int st.flags.max_clause_count)));
+   Util.sysoutf 1 (fun () -> ("\nClauses generated by LEO-II so far: "^(string_of_int st.clause_count)));
    Util.sysout 1 "\nHence LEO-II has stopped proof search\n";
 (*   Util.sysout 1 ("% SZS status GaveUp"); *)
    if st.origproblem_filename = ""
@@ -984,8 +984,8 @@ let max_clauses_subdialog (st:state) =
 let max_loops_subdialog (st:state) =
   if (st.flags.max_loop_count > 0 ) && (st.loop_count >= st.flags.max_loop_count) then 
   (
-   Util.sysout 1 ("\nUpper limit for prove loops in current setting: "^(string_of_int st.flags.max_loop_count));
-   Util.sysout 1 ("\nProve loops by so far: "^(string_of_int st.loop_count));
+   Util.sysoutf 1 (fun () -> ("\nUpper limit for prove loops in current setting: "^(string_of_int st.flags.max_loop_count)));
+   Util.sysoutf 1 (fun () -> ("\nProve loops by so far: "^(string_of_int st.loop_count)));
    Util.sysout 1 "\nHence LEO-II has stopped proof search\n";
 (*   Util.sysout 1 ("% SZS status GaveUp"); *)
    if st.origproblem_filename=""
@@ -997,7 +997,7 @@ let max_loops_subdialog (st:state) =
 let max_unidepth_subdialog (st:state) =
   if (st.flags.max_loop_count > 0 ) && (st.loop_count >= st.flags.max_loop_count) then 
   (
-   Util.sysout 1 ("\nLEO-II gives up at this point. Please complain with C. Benzmueller.\n");
+   Util.sysoutf 1 (fun () -> ("\nLEO-II gives up at this point. Please complain with C. Benzmueller.\n"));
 (*   Util.sysout 1 ("% SZS status GaveUp"); *)
    if st.origproblem_filename=""
    then Util.sysout 1 "\n"
@@ -1031,9 +1031,9 @@ let write_fo_like_clauses_subdialog (st:state) =
       let chan = open_out file_in in
 	output_string chan (get_fo_clauses st);
 	close_out chan;
-	Util.sysout 1 ("\n*** File "^file_in^" written; it contains translations of the FO-like clauses in LEO-II's search space into FOTPTP FOF syntax at time of proof search termination ***\n")
+	Util.sysoutf 1 (fun () -> ("\n*** File "^file_in^" written; it contains translations of the FO-like clauses in LEO-II's search space into FOTPTP FOF syntax at time of proof search termination ***\n"))
     else
-	Util.sysout 1 ("\nFlag flag-write_fo-like-clauses is not set. No FO-like clauses file written!\n\n")
+	Util.sysoutf 1 (fun () -> ("\nFlag flag-write_fo-like-clauses is not set. No FO-like clauses file written!\n\n"))
 
 (** This function is used in cmd_read_problem_string, cmd_read_problem_file, cmd_test_problem *)
 let init_problem termlist sigma termroles (kind,filename) st =
@@ -1107,15 +1107,15 @@ let init_problem termlist sigma termroles (kind,filename) st =
     Util.sysout 2 (state_to_string st);
 
     Util.sysout 2 "\n***********************************************************************";
-    Util.sysout 2	("\nNew State Initialized for Problem: "
-			             ^ st.origproblem_filename ^ "\n");
-    Util.sysout 2	("\n"
+    Util.sysoutf 2 (fun () -> ("\nNew State Initialized for Problem: "
+			             ^ st.origproblem_filename ^ "\n"));
+    Util.sysoutf 2 (fun () -> ("\n"
 			             ^ "ACTIVE: " ^ cl_clauseset_to_string st.active ^ "\n"
 			             ^ "PASSIVE: " ^ cl_clauseset_to_string st.passive ^ "\n"
 			             ^ "PROBLEM AXIOMS: " ^ cl_clauselist_to_string st.problem_axioms ^ "\n"
 			             ^ "PROBLEM STACK: " ^ cl_clauselist_to_string st.problem_stack ^ "\n"
 			             ^ "\n\n  (call command 'show-state' for displaying state)"
-			             ^ "\n***********************************************************************\n");
+			             ^ "\n***********************************************************************\n"));
     true
 
 (** Read Problem String *)
@@ -1150,7 +1150,7 @@ let write_original_problem_to_hotptp_file (st:state) =
     output_string chan (origproblem_to_hotptp st);
     close_out chan;
     Util.sysout 1 (origproblem_to_hotptp st);
-    Util.sysout 0 ("\nThe pretty print of the original problem has been written to file: \n "^filename_new^"\n\n");
+    Util.sysoutf 0 (fun () -> ("\nThe pretty print of the original problem has been written to file: \n "^filename_new^"\n\n"));
   true
 
 let cmd_write_original_problem_to_hotptp_file (st:state) _ =
@@ -1196,12 +1196,12 @@ let analyze_problem (st:state) =
     (no_of_axioms,length_of_definitions,contains_choice_funs)
 
 let cmd_analyze_problem (st:state) _ =
-  Util.sysout 1  ( "\n------------- Problem Analysis -------------"^"\n");
+  Util.sysoutf 1 (fun () -> ( "\n------------- Problem Analysis -------------"^"\n"));
   let (no_of_axioms,length_of_definitions,contains_choice_funs) = analyze_problem st in
-  Util.sysout 1  ( " no. of axioms = "^(string_of_int no_of_axioms) );  
-  Util.sysout 1  ( " length. of definitions = "^(string_of_int length_of_definitions) );  
-  Util.sysout 1  ( " contains choice funs = "^(string_of_bool contains_choice_funs) );  
-  Util.sysout 1  ( "\n------------- End Problem Analysis -------------"^"\n");
+  Util.sysoutf 1 (fun () -> ( " no. of axioms = "^(string_of_int no_of_axioms) ));  
+  Util.sysoutf 1 (fun () -> ( " length. of definitions = "^(string_of_int length_of_definitions) ));  
+  Util.sysoutf 1 (fun () -> ( " contains choice funs = "^(string_of_bool contains_choice_funs) ));  
+  Util.sysoutf 1 (fun () -> ( "\n------------- End Problem Analysis -------------"^"\n"));
   true
 
 (** Analyze State; Features for Machine Learning *)
@@ -1261,32 +1261,32 @@ let analyze (st:state) =
   begin
    
     Util.sysout 0 (state_to_string st);
-    Util.sysout 0  ( "\n------------- The Termset -------------"^"\n");
+    Util.sysoutf 0 (fun () -> ( "\n------------- The Termset -------------"^"\n"));
     Util.sysout 0 (Termset.to_string st.index.termbase);
-    Util.sysout 0  ( "------------- End Termset -------------"^"\n");
+    Util.sysoutf 0 (fun () -> ( "------------- End Termset -------------"^"\n"));
     analyze_termset st.index;
     Util.sysout 0  ( "\n\n\n");
    
     Util.sysout 0  ( "#MALES Features Start#\n");
-    Util.sysout 0 ( (string_of_int no_of_conjectures)^" % no. of conjectures\n" ); 
-    Util.sysout 0 ( (string_of_int no_of_axioms)^" % no. of axioms\n" ); 
-    Util.sysout 0 ( (if no_of_axioms < 10 then "1" else "0")^" % is problem small (axioms < 10)\n" );
-    Util.sysout 0 ( (if 10 <= no_of_axioms  && no_of_axioms < 100 then "1" else "0")^" % is problem medium (10 <= axioms < 100)\n" );
-    Util.sysout 0 ( (if no_of_axioms >= 100 then "1" else "0")^" % is problem big (axioms >= 100)\n" );
-    Util.sysout 0 ( (string_of_int no_of_base_types)^" % no. of basetypes\n" ); 
-    Util.sysout 0 ( (string_of_int no_of_undefined_symbols)^" % number of undefined symbols (non-logical)\n" );
-    Util.sysout 0 ( (string_of_int no_of_defined_symbols)^" % number of defined symbols (non-logical)\n" );
-    Util.sysout 0 ( (string_of_float ratio_axioms_undefinedSymbols)^" % ratio axioms/undefined symbols\n" );
-    Util.sysout 0 ( (string_of_float ratio_axioms_definedSymbols)^" % ratio axioms/defined symbols\n" );
-    Util.sysout 0 ( (string_of_float ratio_definedSymbols_undefinedSymbols)^" % ratio defined/undefined symbols\n" );
-    Util.sysout 0 ( (string_of_float average_length_of_defined_symbols)^" % average (string) length of definitions\n" ); 
-    Util.sysout 0 ( (if contains_choice_funs then (string_of_int 1) else (string_of_int 0))^" % contains choice fun types\n" );
-    Util.sysout 0 ( (string_of_int contains_numeral_types)^" % contains numeral types\n" ); 
-    Util.sysout 0 ( (string_of_int number_numeral_types)^" % no. of numeral types\n" ); 
-    Util.sysout 0 ( (string_of_int contains_numeral_unaryop_types)^" % contains numeral unary operator types\n" ); 
-    Util.sysout 0 ( (string_of_int number_numeral_unaryop_types)^" % no. of numeral unary operator types\n" ); 
-    Util.sysout 0 ( (string_of_int contains_numeral_binaryop_types)^" % contains numeral binary operator types\n" ); 
-    Util.sysout 0 ( (string_of_int number_numeral_binaryop_types)^" % no. of numeral binary operator types\n" ); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int no_of_conjectures)^" % no. of conjectures\n" )); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int no_of_axioms)^" % no. of axioms\n" )); 
+    Util.sysoutf 0 (fun () -> ( (if no_of_axioms < 10 then "1" else "0")^" % is problem small (axioms < 10)\n" ));
+    Util.sysoutf 0 (fun () -> ( (if 10 <= no_of_axioms  && no_of_axioms < 100 then "1" else "0")^" % is problem medium (10 <= axioms < 100)\n" ));
+    Util.sysoutf 0 (fun () -> ( (if no_of_axioms >= 100 then "1" else "0")^" % is problem big (axioms >= 100)\n" ));
+    Util.sysoutf 0 (fun () -> ( (string_of_int no_of_base_types)^" % no. of basetypes\n" )); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int no_of_undefined_symbols)^" % number of undefined symbols (non-logical)\n" ));
+    Util.sysoutf 0 (fun () -> ( (string_of_int no_of_defined_symbols)^" % number of defined symbols (non-logical)\n" ));
+    Util.sysoutf 0 (fun () -> ( (string_of_float ratio_axioms_undefinedSymbols)^" % ratio axioms/undefined symbols\n" ));
+    Util.sysoutf 0 (fun () -> ( (string_of_float ratio_axioms_definedSymbols)^" % ratio axioms/defined symbols\n" ));
+    Util.sysoutf 0 (fun () -> ( (string_of_float ratio_definedSymbols_undefinedSymbols)^" % ratio defined/undefined symbols\n" ));
+    Util.sysoutf 0 (fun () -> ( (string_of_float average_length_of_defined_symbols)^" % average (string) length of definitions\n" )); 
+    Util.sysoutf 0 (fun () -> ( (if contains_choice_funs then (string_of_int 1) else (string_of_int 0))^" % contains choice fun types\n" ));
+    Util.sysoutf 0 (fun () -> ( (string_of_int contains_numeral_types)^" % contains numeral types\n" )); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int number_numeral_types)^" % no. of numeral types\n" )); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int contains_numeral_unaryop_types)^" % contains numeral unary operator types\n" )); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int number_numeral_unaryop_types)^" % no. of numeral unary operator types\n" )); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int contains_numeral_binaryop_types)^" % contains numeral binary operator types\n" )); 
+    Util.sysoutf 0 (fun () -> ( (string_of_int number_numeral_binaryop_types)^" % no. of numeral binary operator types\n" )); 
     analyze_termset_males st.index;
     Util.sysout 0  ( "#MALES Features End#\n");
   end
@@ -1299,9 +1299,9 @@ let cmd_analyze (st:state) _ =
 
 (** Analyze Index *)
 let cmd_analyze_index (st:state) _ =
-  Util.sysout 1  ( "\n------------- The Termset -------------"^"\n");
+  Util.sysoutf 1 (fun () -> ( "\n------------- The Termset -------------"^"\n"));
   Util.sysout 1 (Termset.to_string st.index.termbase);
-  Util.sysout 1  ( "------------- End Termset -------------"^"\n");
+  Util.sysoutf 1 (fun () -> ( "------------- End Termset -------------"^"\n"));
   analyze_termset st.index;
   true
 
@@ -1317,7 +1317,7 @@ let cmd_max_clause_count (st:state) args =
   try (
       let (n,_) = get_int_arg args in
       let _ = set_flag_max_clause_count st n in
-      Util.sysout 1 ("Flag MAX_CLAUSE_COUNT set to: "^(string_of_int st.flags.max_clause_count)^"\n");
+      Util.sysoutf 1 (fun () -> ("Flag MAX_CLAUSE_COUNT set to: "^(string_of_int st.flags.max_clause_count)^"\n"));
       true)
   with
     Failure s ->
@@ -1329,7 +1329,7 @@ let cmd_relevance_filter_level (st:state) args =
   try (
       let (n,_) = get_int_arg args in
       let _ = set_flag_relevance_filter st n in
-      Util.sysout 1 ("Flag RELEVANCE_FILTER set to: "^(string_of_int st.flags.relevance_filter)^"\n");
+      Util.sysoutf 1 (fun () -> ("Flag RELEVANCE_FILTER set to: "^(string_of_int st.flags.relevance_filter)^"\n"));
       true)
   with
     Failure s ->
@@ -1342,7 +1342,7 @@ let cmd_max_loop_count (st:state) args =
   try (
       let (n,_) = get_int_arg args in
       let _ = set_flag_max_loop_count st n in
-      Util.sysout 1 ("Flag MAX_LOOP_COUNT set to: "^(string_of_int st.flags.max_loop_count)^"\n");
+      Util.sysoutf 1 (fun () -> ("Flag MAX_LOOP_COUNT set to: "^(string_of_int st.flags.max_loop_count)^"\n"));
       true)
   with
     Failure s ->
@@ -1354,7 +1354,7 @@ let cmd_max_uni_depth (st:state) args =
   try (
       let (n,_) = get_int_arg args in
       let _ = set_flag_max_uni_depth st n in
-      Util.sysout 1 ("Flag MAX_UNI_DEPTH set to: "^(string_of_int st.flags.max_uni_depth)^"\n");
+      Util.sysoutf 1 (fun () -> ("Flag MAX_UNI_DEPTH set to: "^(string_of_int st.flags.max_uni_depth)^"\n"));
       true)
   with
     Failure s ->
@@ -1390,7 +1390,7 @@ let split_problems (st : state) =
           in (term', cl')
     | _ -> failwith "'term' is not an abstraction" in
   let rec elim_quants_w_sko pol st term cl =
-    Util.sysout 3 ("\n elim_quants_w_sko term : " ^ Term.to_hotptp term);
+    Util.sysoutf 3 (fun () -> ("\n elim_quants_w_sko term : " ^ Term.to_hotptp term));
     match term with
         Appl (Symbol "?", (Abstr (_, _, _) as term)) when pol ->
           let (term', cl') = elim_quant_w_sko pol st term cl
@@ -1404,7 +1404,7 @@ let split_problems (st : state) =
     in
       snd (elim_quants_w_sko l.lit_polarity st (xterm2term l.lit_term) cl) in
   let rec split term =
-    Util.sysout 3 ("\n split term : " ^ Term.to_hotptp term);
+    Util.sysoutf 3 (fun () -> ("\n split term : " ^ Term.to_hotptp term));
     match term with
         Appl (Symbol "!", Abstr (var, ty, t)) ->
           let reslist = split t in
@@ -1451,7 +1451,7 @@ let split_problems (st : state) =
             unpack_conjuncts t1 @ unpack_conjuncts t2
         | s -> [s]
     in
-      Util.sysout 3 ("\n split with axioms: " ^ Term.to_hotptp term);
+      Util.sysoutf 3 (fun () -> ("\n split with axioms: " ^ Term.to_hotptp term));
       match term with
           Appl (Appl (Symbol "=>", (Appl (Appl (Symbol "&", t1), t2) as conj)), t3) ->
           let conjs = unpack_conjuncts conj in
@@ -1545,11 +1545,11 @@ let cmd_split_problems (st : state) _ =
   let conjectures = st.problem_stack
   and axioms = st.problem_axioms in
     split_problems st;
-    Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string axioms));
-    Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string conjectures));
+    Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string axioms)));
+    Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string conjectures)));
     Util.sysout 1 ("\n--- split-problems --->\n");
-    Util.sysout 1 ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms));
-    Util.sysout 1 ("\nProblems: "^(cl_clauselist_to_string st.problem_stack));
+    Util.sysoutf 1 (fun () -> ("\nAxioms: "^(cl_clauselist_to_string st.problem_axioms)));
+    Util.sysoutf 1 (fun () -> ("\nProblems: "^(cl_clauselist_to_string st.problem_stack)));
     true
 
 (** Write Orignal Problem To HOTPTP File *)
@@ -1563,7 +1563,7 @@ let write_original_problem_to_hotptp_file (st:state) =
     output_string chan (origproblem_to_hotptp st);
     close_out chan;
     Util.sysout 0 (origproblem_to_hotptp st);
-    Util.sysout 0 ("\nThis HOTPTP representation has been written to file: \n "^filename_new^"\n");
+    Util.sysoutf 0 (fun () -> ("\nThis HOTPTP representation has been written to file: \n "^filename_new^"\n"));
   true
 
 let cmd_write_original_problem_to_hotptp_file (st:state) _ =
@@ -1581,7 +1581,7 @@ let prove_help (st:state) (prover:string)  (flag:bool) =
       try
         State.check_timeout ();
         ignore(set_flag_max_uni_depth st unid);
-        Util.sysout 1 ("[Unidepth=" ^ string_of_int unid ^ "]");
+        Util.sysoutf 1 (fun () -> ("[Unidepth=" ^ string_of_int unid ^ "]"));
         ignore(pre_process st);
         State.check_timeout ();
         if flag then call_fo_atp st st.flags.atp_prover;
@@ -1670,7 +1670,7 @@ let state_to_multiple_thf_problems (st:state) =
                                    else (s^" thf(tp_"^(inc_count counter)^",type,("^t^": "^(Hol_type.to_hotptp i)^"))."))
 	"" (all_uninterpreted_symbols st.signature) in
     let contained_defined_nonlogical_symbols t st = 
-      Util.sysout 3 ("\n contains_defined_symbol: "^(Term.to_hotptp t));
+      Util.sysoutf 3 (fun () -> ("\n contains_defined_symbol: "^(Term.to_hotptp t)));
       List.filter
 	(fun (s,_) -> occurs_in st.index (term2xterm t) (term2xterm (Symbol s))) 
 	(all_defined_symbols_without_logical_symbols st.signature)
@@ -1753,8 +1753,8 @@ let prove_with_fo_atp (st : state) (prover : string) =
           begin
             Util.sysout 1 "\nLEO-II tries to prove the following (sub)problems.\n";
             for i = 0 to Array.length problem_array_thf - 1 do
-            Util.sysout 1 ("\n\n(" ^ string_of_int i ^
-            ") Problem:\n " ^ problem_array_thf.(i))
+            Util.sysoutf 1 (fun () -> ("\n\n(" ^ string_of_int i ^
+            ") Problem:\n " ^ problem_array_thf.(i)))
             done
           end;
         let success = ref true in
@@ -1813,13 +1813,13 @@ let prove_with_fo_atp (st : state) (prover : string) =
                     set_problem_stack st theorem_clauses;
                     set_problem_axioms st axiom_clauses;
 
-                    if Build_config.debug then Util.sysout 1 ("\n\n*** Trying Problem: " ^ string_of_int !i ^ " ");
+                    if Build_config.debug then Util.sysoutf 1 (fun () -> ("\n\n*** Trying Problem: " ^ string_of_int !i ^ " "));
                     let local_success = give_it_a_try_with_prover st prover
                     in
                       if local_success then
                         all_empty_clauses_for_splits := List.hd st.empty_clauses :: !all_empty_clauses_for_splits
                       else
-                        if Build_config.debug then Util.sysout 1  ("\n*** Did not prove problem: " ^ string_of_int !i);
+                        if Build_config.debug then Util.sysoutf 1 (fun () -> ("\n*** Did not prove problem: " ^ string_of_int !i));
 
                       success := !success && local_success
             done;
@@ -1888,7 +1888,7 @@ let cmd_fo_translation (st:state) args =
   try (
       let (name,_) = get_str_arg args in
       let _ = set_flag_fo_translation st name in
-      Util.sysout 1 ("Flag FO_TRANSLATION set to: "^st.flags.fo_translation^"\n");
+      Util.sysoutf 1 (fun () -> ("Flag FO_TRANSLATION set to: "^st.flags.fo_translation^"\n"));
       true)
   with
     Failure s ->
@@ -1902,7 +1902,7 @@ let cmd_fo_translation (st:state) args =
 let write_proof_protocol (st:state) =
   if st.flags.write_protocol_files then
     match st.empty_clauses with
-	[] -> Util.sysout 1 ("\n No proof for "^st.origproblem_filename^"\n"); true
+	[] -> Util.sysoutf 1 (fun () -> ("\n No proof for "^st.origproblem_filename^"\n")); true
       | empty_cl::_ ->
 	  let filename = st.origproblem_filename in
 	  let (filename_txt,filename_tstp) =
@@ -1919,11 +1919,11 @@ let write_proof_protocol (st:state) =
 	    output_string chan_tstp (derivation_tstp protocol_filtering st);
 	    close_out chan_txt;
 	    close_out chan_tstp;
-	    Util.sysout 1 ("\nThe proof protocol file(s): \n "^filename_txt ^"\n "^filename_tstp ^"\n ");
+	    Util.sysoutf 1 (fun () -> ("\nThe proof protocol file(s): \n "^filename_txt ^"\n "^filename_tstp ^"\n "));
 	    true
   else
     (
-     Util.sysout 2 ("\nFlag flag-write-protocol-files is not set. No protocol files written!\n\n");
+     Util.sysoutf 2 (fun () -> ("\nFlag flag-write-protocol-files is not set. No protocol files written!\n\n"));
      true
     )
 
@@ -2000,7 +2000,7 @@ let cmd_prove_directory (st:state) args =
   output_string chan result_string;
   close_out chan;
   Util.sysout 1 result_string;
-  Util.sysout 1 ("\n This overview has been written to file: "^file^"\n");
+  Util.sysoutf 1 (fun () -> ("\n This overview has been written to file: "^file^"\n"));
   true
 
 let cmd_prove_directory_with_fo_atp (st:state) args =
@@ -2070,7 +2070,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
     output_string chan result_string;
     close_out chan;
     Util.sysout 1 result_string;
-    Util.sysout 1 ("\n This overview has been written to file: "^file^"\n");
+    Util.sysoutf 1 (fun () -> ("\n This overview has been written to file: "^file^"\n"));
     true
 
 
@@ -2129,7 +2129,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
  let cmd_show_derivation (st:state) args =
    try (
        let (n,_) = get_int_arg args in
-       Util.sysout 1 ("\n**** Protocol for Problem: "^st.origproblem_filename);
+       Util.sysoutf 1 (fun () -> ("\n**** Protocol for Problem: "^st.origproblem_filename));
        print_derivation (Some (n, "")) st;
        true)
    with
@@ -2142,7 +2142,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
  let cmd_show_derivation_tstp (st:state) args =
    try (
        let (n,_) = get_int_arg args in
-       Util.sysout 1 ("\n**** Protocol for Problem: "^st.origproblem_filename);
+       Util.sysoutf 1 (fun () -> ("\n**** Protocol for Problem: "^st.origproblem_filename));
        print_derivation_tstp (Some (n, "")) st;
        true)
    with
@@ -2157,7 +2157,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
      | a::b -> a^", "^(show_list b)
      | [] -> ""
    in
-   Util.sysout 1 ((show_list (State.get_input_logic ()))^"\n");
+   Util.sysoutf 1 (fun () -> ((show_list (State.get_input_logic ()))^"\n"));
    true
 
 
@@ -2169,13 +2169,13 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
 
  (** Show Protocol *)
  let cmd_show_protocol (st:state) _ =
-   Util.sysout 1 ("\n**** Protocol for Problem: "^st.origproblem_filename);
+   Util.sysoutf 1 (fun () -> ("\n**** Protocol for Problem: "^st.origproblem_filename));
    print_protocol ();
    true
 
  (** Show Protocol TSTP*)
  let cmd_show_protocol_tstp (st:state) _ =
-   Util.sysout 1 ("\n**** Protocol for Problem: "^st.origproblem_filename);
+   Util.sysoutf 1 (fun () -> ("\n**** Protocol for Problem: "^st.origproblem_filename));
    print_protocol_tstp st;
    true
 
@@ -2184,10 +2184,10 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
  let cmd_equality_classes (st:state) _ =
    (match equality_classes st.index (classify_role st) ["pos_unit"] with
      [] -> Util.sysout 1 "No equations found.\n"
-   | l  -> (Util.sysout 1 ("Equality classes (using pos_unit equations only):\n");
+   | l  -> (Util.sysoutf 1 (fun () -> ("Equality classes (using pos_unit equations only):\n"));
 	    List.iter
 	     (fun set -> Util.sysout 1 "{\n";
-			 IdSet.iter (fun id -> Util.sysout 1 (" "^(string_of_int id)^": "^(term_to_hotptp st.index.termbase id)^"\n")) set;
+			 IdSet.iter (fun id -> Util.sysoutf 1 (fun () -> (" "^(string_of_int id)^": "^(term_to_hotptp st.index.termbase id)^"\n"))) set;
 			 Util.sysout 1 "}\n")
 	    l));
    true
@@ -2199,10 +2199,10 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        let (n,_) = get_int_arg args in
        let equals = find_equals st.index n (classify_role st) ["pos_unit"] in
        if IdSet.is_empty equals
-       then Util.sysout 1 ("No equalities found for node "^(string_of_int n)^": "^(term_to_hotptp st.index.termbase n)^"\n")
+       then Util.sysoutf 1 (fun () -> ("No equalities found for node "^(string_of_int n)^": "^(term_to_hotptp st.index.termbase n)^"\n"))
        else (
-	 Util.sysout 1 ("Node "^(string_of_int n)^": "^(term_to_hotptp st.index.termbase n)^" equals:\n");
-	 IdSet.iter (fun id -> Util.sysout 1 (" "^(string_of_int id)^": "^(term_to_hotptp st.index.termbase id)^"\n")) equals
+	 Util.sysoutf 1 (fun () -> ("Node "^(string_of_int n)^": "^(term_to_hotptp st.index.termbase n)^" equals:\n"));
+	 IdSet.iter (fun id -> Util.sysoutf 1 (fun () -> (" "^(string_of_int id)^": "^(term_to_hotptp st.index.termbase id)^"\n"))) equals
        );
        true)
    with
@@ -2221,10 +2221,10 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        let ids = symbol2id st.index s in
        let equals = find_equals st.index ids classify ["pos"] in
        if IdSet.is_empty equals
-       then Util.sysout 1 ("No equalities found for node "^(string_of_int ids)^": "^(term_to_hotptp st.index.termbase ids)^"\n")
+       then Util.sysoutf 1 (fun () -> ("No equalities found for node "^(string_of_int ids)^": "^(term_to_hotptp st.index.termbase ids)^"\n"))
        else (
-	 Util.sysout 1 ("Node "^(string_of_int ids)^": "^(term_to_hotptp st.index.termbase ids)^" equals:\n");
-	 IdSet.iter (fun id -> Util.sysout 1 (" "^(string_of_int id)^": "^(term_to_hotptp st.index.termbase id)^"\n")) equals
+	 Util.sysoutf 1 (fun () -> ("Node "^(string_of_int ids)^": "^(term_to_hotptp st.index.termbase ids)^" equals:\n"));
+	 IdSet.iter (fun id -> Util.sysoutf 1 (fun () -> (" "^(string_of_int id)^": "^(term_to_hotptp st.index.termbase id)^"\n"))) equals
        );
        true)
    with
@@ -2249,7 +2249,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
    try (
        let (n,_) = get_int_arg args in
 	 ignore(set_flag_max_local_time st n);
-	 Util.sysout 1 ("\n* Local timeout set to"^(string_of_int n));
+	 Util.sysoutf 1 (fun () -> ("\n* Local timeout set to"^(string_of_int n)));
        true)
    with
      Failure s ->
@@ -2272,7 +2272,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
  let cmd_inspect_symbol (st:state) args =
    try (
        let (s,_) = get_str_arg args in
-       Util.sysout 1 (inspect_symbol st.index s role_to_string);
+       Util.sysoutf 1 (fun () -> (inspect_symbol st.index s role_to_string));
        true)
    with
      Failure s ->
@@ -2324,7 +2324,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        let clause = find_clause_by_number st n in
 	 Util.sysout 1 (cl_clause_to_string clause);
 	 Util.sysout 1 ("--- tptp thf --->");
-	 Util.sysout 1 ("\n "^(cl_axiom_clause_to_thf clause)^"\n");
+	 Util.sysoutf 1 (fun () -> ("\n "^(cl_axiom_clause_to_thf clause)^"\n"));
 	 true
      )
    with
@@ -2343,9 +2343,9 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        | [] -> ""
      in
      let clause = find_clause_by_number st n in
-     Util.sysout 1 ((show_list (List.map Termsystem.to_string
+     Util.sysoutf 1 (fun () -> ((show_list (List.map Termsystem.to_string
                                          (Main.uninterpreted_and_nonlogical_symbols_in_clause clause st))
-	            )^"\n");
+	            )^"\n"));
      true) 
   with
     Failure s ->
@@ -2456,7 +2456,7 @@ let cmd_call_fo_atp_early (st:state) args =
        then !dot_config.show_node_id <- true
        else !dot_config.show_node_id <- false
      else
-       Util.sysout 1 ((bool2yn !dot_config.show_node_id)^"\n");
+       Util.sysoutf 1 (fun () -> ((bool2yn !dot_config.show_node_id)^"\n"));
      (* show_node_type *)
      let yn = ask (" - Show node types ("^(bool2y_n !dot_config.show_node_type)^")? ") in
      if String.length yn > 0 then
@@ -2464,7 +2464,7 @@ let cmd_call_fo_atp_early (st:state) args =
        then !dot_config.show_node_type <- true
        else !dot_config.show_node_type <- false
      else
-       Util.sysout 1 ((bool2yn !dot_config.show_node_type)^"\n");
+       Util.sysoutf 1 (fun () -> ((bool2yn !dot_config.show_node_type)^"\n"));
      (* show_abstr_type *)
      let yn = ask (" - Show abstracted types ("^(bool2y_n !dot_config.show_abstr_type)^")? ") in
      if String.length yn > 0 then
@@ -2472,7 +2472,7 @@ let cmd_call_fo_atp_early (st:state) args =
        then !dot_config.show_abstr_type <- true
        else !dot_config.show_abstr_type <- false
      else
-       Util.sysout 1 ((bool2yn !dot_config.show_abstr_type)^"\n");
+       Util.sysoutf 1 (fun () -> ((bool2yn !dot_config.show_abstr_type)^"\n"));
      (* show_bound_type *)
      let yn = ask (" - Show bound variable types ("^(bool2y_n !dot_config.show_bound_type)^")? ") in
      if String.length yn > 0 then
@@ -2480,7 +2480,7 @@ let cmd_call_fo_atp_early (st:state) args =
        then !dot_config.show_bound_type <- true
        else !dot_config.show_bound_type <- false
      else
-       Util.sysout 1 ((bool2yn !dot_config.show_bound_type)^"\n");
+       Util.sysoutf 1 (fun () -> ((bool2yn !dot_config.show_bound_type)^"\n"));
      (* show_appl_term *)
      let yn = ask (" - Show terms at application nodes ("^(bool2y_n !dot_config.show_appl_term)^")? ") in
      if String.length yn > 0 then
@@ -2488,13 +2488,13 @@ let cmd_call_fo_atp_early (st:state) args =
        then !dot_config.show_appl_term <- true
        else !dot_config.show_appl_term <- false
      else
-       Util.sysout 1 ((bool2yn !dot_config.show_appl_term)^"\n");
+       Util.sysoutf 1 (fun () -> ((bool2yn !dot_config.show_appl_term)^"\n"));
      (* node_font_size *)
      let num = ask (" - Node font size (["^(string_of_int !dot_config.node_font_size)^"])? ") in
      if String.length num > 0 then
        !dot_config.node_font_size <- (int_of_string num)
      else
-       Util.sysout 1 ((string_of_int !dot_config.node_font_size)^"\n");
+       Util.sysoutf 1 (fun () -> ((string_of_int !dot_config.node_font_size)^"\n"));
      (* dot_range *)
      let str = ask (" - Range of nodes to draw, e.g. '1-10 50-100', or 'all' (["^(range2str !dot_range)^"])? ") in
      if String.length str > 0 then
@@ -2554,7 +2554,7 @@ let cmd_call_fo_atp_early (st:state) args =
  (** Verbose Flag *)
  let cmd_flag_verbose (st:state) _ =
    let _ = set_flag_verbose st (not st.flags.verbose) in
-   Util.sysout 1 ("Flag VERBOSE set to: "^(string_of_bool st.flags.verbose)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag VERBOSE set to: "^(string_of_bool st.flags.verbose)^"\n"));
    true
 
 (** Proof Output  Flag *)
@@ -2562,7 +2562,7 @@ let cmd_call_fo_atp_early (st:state) args =
    try (
        let (n,_) = get_int_arg args in
        let _ = set_flag_proof_output st n in
-       Util.sysout 1 ("Flag PROOF_OUTPUT set to: "^(string_of_int st.flags.proof_output)^"\n");
+       Util.sysoutf 1 (fun () -> ("Flag PROOF_OUTPUT set to: "^(string_of_int st.flags.proof_output)^"\n"));
        true)
    with
      Failure s ->
@@ -2574,7 +2574,7 @@ let cmd_call_fo_atp_early (st:state) args =
    try (
        let (n,_) = get_int_arg args in
        let _ = (set_flag_atp_timeout st n) in
-	 Util.sysout 1 ("\n* ATP timeout set to "^(string_of_int n));
+	 Util.sysoutf 1 (fun () -> ("\n* ATP timeout set to "^(string_of_int n)));
        true)
    with
      Failure s ->
@@ -2587,7 +2587,7 @@ let cmd_call_fo_atp_early (st:state) args =
    try (
        let (n,_) = get_int_arg args in
        let _ = (set_flag_prim_subst st n) in
-	 Util.sysout 1 ("Prim_subst level set to "^(string_of_int n));
+	 Util.sysoutf 1 (fun () -> ("Prim_subst level set to "^(string_of_int n)));
        true)
    with
      Failure s ->
@@ -2597,51 +2597,51 @@ let cmd_call_fo_atp_early (st:state) args =
 (** Flag for Replacement of Leibniz literals in clauses*)
  let cmd_flag_replace_leibnizEQ (st:state) _ =
    let _ = set_flag_replace_leibnizEQ st (not st.flags.replace_leibnizEQ) in
-   Util.sysout 1 ("Flag REPLACE_LEIBNIZEQ set to: "^(string_of_bool st.flags.replace_leibnizEQ)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag REPLACE_LEIBNIZEQ set to: "^(string_of_bool st.flags.replace_leibnizEQ)^"\n"));
    true
 
 (** Flag for Replacement of Andrews literals in clauses*)
  let cmd_flag_replace_andrewsEQ (st:state) _ =
    let _ = set_flag_replace_andrewsEQ st (not st.flags.replace_andrewsEQ) in
-   Util.sysout 1 ("Flag REPLACE_ANDREWSEQ set to: "^(string_of_bool st.flags.replace_andrewsEQ)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag REPLACE_ANDREWSEQ set to: "^(string_of_bool st.flags.replace_andrewsEQ)^"\n"));
    true
 
 (** Flag for use of choice rule*)
  let cmd_flag_use_choice (st:state) _ =
    let _ = set_flag_use_choice st (not st.flags.use_choice) in
-   Util.sysout 1 ("Flag USE_CHOICE set to: "^(string_of_bool st.flags.use_choice)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag USE_CHOICE set to: "^(string_of_bool st.flags.use_choice)^"\n"));
    true
 
 (** Flag for use of extensional unification *)
  let cmd_flag_use_extuni (st:state) _ =
    let _ = set_flag_use_extuni st (not st.flags.use_extuni) in
-   Util.sysout 1 ("Flag USE_EXTUNI set to: "^(string_of_bool st.flags.use_extuni)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag USE_EXTUNI set to: "^(string_of_bool st.flags.use_extuni)^"\n"));
    true
 
 
 (** Proof Output  Flag *)
  let cmd_flag_unfold_defs_early (st:state) _ =
    let _ = set_flag_unfold_defs_early st (not st.flags.unfold_defs_early) in
-   Util.sysout 1 ("Flag UNFOLD_DEFS_EARLY set to: "^(string_of_bool st.flags.unfold_defs_early)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag UNFOLD_DEFS_EARLY set to: "^(string_of_bool st.flags.unfold_defs_early)^"\n"));
    true
 
 (** Proof Output  Flag *)
  let cmd_flag_sos(st:state) _ =
    let _ = set_flag_sos st (not st.flags.sos) in
-   Util.sysout 1 ("Flag SOS set to: "^(string_of_bool st.flags.sos)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag SOS set to: "^(string_of_bool st.flags.sos)^"\n"));
    true
 
 
  (** Write FO ATP Files Flag *)
  let cmd_flag_write_protocol_files (st:state) _ =
    let _ = set_flag_write_protocol_files st (not st.flags.write_protocol_files) in
-   Util.sysout 1 ("Flag WRITE_FO_ATP_FILES set to: "^(string_of_bool st.flags.write_protocol_files)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag WRITE_FO_ATP_FILES set to: "^(string_of_bool st.flags.write_protocol_files)^"\n"));
    true
 
 (** Write FO-Like Clauses File *)
  let cmd_flag_write_fo_like_clauses (st:state) _ =
    let _ = set_flag_write_fo_like_clauses st (not st.flags.write_fo_like_clauses) in
-   Util.sysout 1 ("Flag WRITE_FO_LIKE_CLAUSES set to: "^(string_of_bool st.flags.write_fo_like_clauses)^"\n");
+   Util.sysoutf 1 (fun () -> ("Flag WRITE_FO_LIKE_CLAUSES set to: "^(string_of_bool st.flags.write_fo_like_clauses)^"\n"));
    true
 
 

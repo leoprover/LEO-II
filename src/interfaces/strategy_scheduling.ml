@@ -43,9 +43,9 @@ let compute_strategies global_conf filename : string list list =
       let _ = Cmdline.execute_command ("read-problem-file " ^ filename) in
       let (no_of_axioms,length_of_definitions,contains_choice_funs) = 
         analyze_problem !leo_state in
-        Util.sysout 0 ("\n No.of.Axioms: " ^ string_of_int no_of_axioms ^ "\n");
-        Util.sysout 0 ("\n Length.of.Defs: " ^ string_of_int length_of_definitions ^ "\n");
-        Util.sysout 0 ("\n Contains.Choice.Funs: " ^ string_of_bool contains_choice_funs^ "\n");
+        Util.sysoutf 0 (fun () -> ("\n No.of.Axioms: " ^ string_of_int no_of_axioms ^ "\n"));
+        Util.sysoutf 0 (fun () -> ("\n Length.of.Defs: " ^ string_of_int length_of_definitions ^ "\n"));
+        Util.sysoutf 0 (fun () -> ("\n Contains.Choice.Funs: " ^ string_of_bool contains_choice_funs^ "\n"));
         match (global_conf.time_slices,global_conf.global_timeout,no_of_axioms,length_of_definitions,contains_choice_funs) with
 	          (sl,_,_,_,_) when sl = 1 -> 
 	            [["read-problem-file " ^ filename;

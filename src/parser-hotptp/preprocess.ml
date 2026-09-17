@@ -11,7 +11,7 @@ let loadfile path file =
                  then (Filename.concat path file) 
                  else file
   in
-  Util.sysout 5 ("\n path: "^path^" file: "^file^" filename: "^filename);
+  Util.sysoutf 5 (fun () -> ("\n path: "^path^" file: "^file^" filename: "^filename));
   let chan = try open_in filename
              with _ ->
              try

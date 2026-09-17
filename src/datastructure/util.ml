@@ -68,6 +68,13 @@ let sysout n s =
         supressed_output_count := !supressed_output_count + 1
     end
 
+(* The message is built only if it will be shown.  Most call sites pass a
+   concatenation of rendered clauses or terms, which at the default verbosity
+   was built and thrown away at every step of the innermost loops.  Passing
+   "" to sysout in the other case keeps the suppressed-output accounting, and
+   with it the progress dots, exactly as it was. *)
+let sysoutf n f = if n <= !debuglevel then sysout n (f ()) else sysout n ""
+
 let add_list ht k l =
         Hashtbl.add ht l
 

@@ -213,7 +213,7 @@ let rec var_rename v1 v2 t =
   | _ -> failwith "Beta_normalize failed"
 
 let rec bn bound t =
-  Util.sysout 3 ("\n bn \n  :bound: "^(List.fold_right (fun (s,t) rs -> s^"/"^(to_string t)^" "^rs) bound "")^"\n  :t: "^(to_string t));
+  Util.sysoutf 3 (fun () -> ("\n bn \n  :bound: "^(List.fold_right (fun (s,t) rs -> s^"/"^(to_string t)^" "^rs) bound "")^"\n  :t: "^(to_string t)));
   let t_new= (
   match t with
     Symbol s ->

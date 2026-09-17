@@ -166,7 +166,7 @@ PREPROCESS=
 # add other options for ocamlc here
 OCAMLFLAGS=$(ANNOTFLG) $(DEBUGFLG) $(INCLUDES) unix.cma str.cma $(PWD)/interfaces/minisat/dllminisatinterface.so $(EXTUNIX_INCLUSION) $(WARN) $(PREPROCESS)
 # add other options for ocamlopt here
-OCAMLOPTFLAGS=$(ANNOTFLG) $(DEBUGFLG) -inline 0 $(INCLUDES) unix.cmxa str.cmxa $(PWD)/interfaces/minisat/libminisatinterface.a $(EXTUNIX_INCLUSION_OPT) -cclib -lstdc++ $(STATICFLGS) $(PREPROCESS)
+OCAMLOPTFLAGS=$(ANNOTFLG) $(DEBUGFLG) $(INCLUDES) unix.cmxa str.cmxa $(PWD)/interfaces/minisat/libminisatinterface.a $(EXTUNIX_INCLUSION_OPT) -cclib -lstdc++ $(STATICFLGS) $(PREPROCESS)
 OCAMLDOCFLAGS=$(INCLUDES) -d $(DOCDIR) -html -hide Pervasives
 
 

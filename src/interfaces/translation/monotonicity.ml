@@ -412,8 +412,8 @@ let analysis (st : State.state) : (string * af) list -> decoration_pred = fun cl
     let prob = minisat_prob ty in
       if Build_config.debug then
         begin
-          Util.sysout 1 ("\nChecking " ^ Hol_type.to_string ty ^
-          "; clauses = " ^ string_of_int (List.length prob))
+          Util.sysoutf 1 (fun () -> ("\nChecking " ^ Hol_type.to_string ty ^
+          "; clauses = " ^ string_of_int (List.length prob)))
         end;
       Minisatinterface.minisat_init (10 (* List.length !pred_dict *));
       List.iter

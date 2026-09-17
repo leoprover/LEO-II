@@ -957,8 +957,8 @@ let clause_to_fullytagged_FOF ((tr,_) as cfg) cl =
       NO_PROXY s as e ->
         if tr = Experiment then
           begin
-            Util.sysout 3 ("\n No FOF translation for clause " ^
-                             Clause.cl_clause_to_string cl ^ "\t(because of " ^ s ^ ")");
+            Util.sysoutf 3 (fun () -> ("\n No FOF translation for clause " ^
+                             Clause.cl_clause_to_string cl ^ "\t(because of " ^ s ^ ")"));
             []
           end
         else raise e
@@ -1051,10 +1051,10 @@ let tr_add_fo_clauses (cll : Clause.cl_clause list) (st : State.state) =
     in
       if Build_config.debug then
         begin
-          Util.sysout 1 ("previous FO clause labels = " ^
-          String.concat ", " !prev_fo_clauses ^ "\n");
-          Util.sysout 1 ("current FO clause labels  = " ^
-          String.concat ", " current_clauses_labels ^ "\n")
+          Util.sysoutf 1 (fun () -> ("previous FO clause labels = " ^
+          String.concat ", " !prev_fo_clauses ^ "\n"));
+          Util.sysoutf 1 (fun () -> ("current FO clause labels  = " ^
+          String.concat ", " current_clauses_labels ^ "\n"))
         end;
       if current_clauses_labels = !prev_fo_clauses then
         begin

@@ -88,10 +88,10 @@ let check_timeout () =
     begin
       if Build_config.debug then
         begin
-          Util.sysout 2 ("check_timeout: leo=" ^ string_of_float (Sys.time ()) ^
+          Util.sysoutf 2 (fun () -> ("check_timeout: leo=" ^ string_of_float (Sys.time ()) ^
           " e=" ^ string_of_float !child_time ^
-          " pct=" ^ string_of_float !problem_cumulative_time ^ "\n");
-          Util.sysout 2 ("time_left: " ^ string_of_float (time_remaining_of_schedule ()) ^ "\n")
+          " pct=" ^ string_of_float !problem_cumulative_time ^ "\n"));
+          Util.sysoutf 2 (fun () -> ("time_left: " ^ string_of_float (time_remaining_of_schedule ()) ^ "\n"))
         end;
       (*FIXME make the "0.1" constant a parameter?*)
       if time_remaining_of_schedule () -. 0.1 < 0. then raise STRATEGY_TERMINATED
@@ -370,34 +370,28 @@ let set_signature (ls : state) (sg : signature) =
   ls.signature <- sg
 
 let set_active (ls : state) (cls : Set_of_clauses.t) =
-  ls.active <- cls;
-  if Build_config.debug then ls.active_debug <- indexedclauses_to_explicitlist ls.active
+  ls.active <- cls
 
 let add_to_active (ls : state) (cl : cl_clause) =
-  ls.active <- Set_of_clauses.add cl ls.active;
-  if Build_config.debug then ls.active_debug <- indexedclauses_to_explicitlist ls.active
+  ls.active <- Set_of_clauses.add cl ls.active
 
 let remove_from_active (ls : state) (cl : cl_clause) =
-  ls.active <- Set_of_clauses.remove cl ls.active;
-  if Build_config.debug then ls.active_debug <- indexedclauses_to_explicitlist ls.active
+  ls.active <- Set_of_clauses.remove cl ls.active
 
 let set_passive (ls : state) (cls : Set_of_clauses.t) =
-  ls.passive <- cls;
-  if Build_config.debug then ls.passive_debug <- indexedclauses_to_explicitlist ls.passive
+  ls.passive <- cls
 
 let set_primsubst_waitlist (ls : state) (cls : Set_of_clauses.t) =
   ls.primsubst_waitlist <- cls
 
 let add_to_passive (ls : state) (cl : cl_clause) =
-  ls.passive <- Set_of_clauses.add cl ls.passive;
-  if Build_config.debug then ls.passive_debug <- indexedclauses_to_explicitlist ls.passive
+  ls.passive <- Set_of_clauses.add cl ls.passive
 
 let add_to_primsubst_waitlist (ls : state) (cl : cl_clause) =
   ls.primsubst_waitlist <- Set_of_clauses.add cl ls.primsubst_waitlist
 
 let remove_from_passive (ls : state) (cl : cl_clause) =
-  ls.passive <- Set_of_clauses.remove cl ls.passive;
-  if Build_config.debug then ls.passive_debug <- indexedclauses_to_explicitlist ls.passive
+  ls.passive <- Set_of_clauses.remove cl ls.passive
 
 let remove_from_primsubst_waitlist (ls : state) (cl : cl_clause) =
   ls.primsubst_waitlist <- Set_of_clauses.remove cl ls.primsubst_waitlist
@@ -426,7 +420,7 @@ let add_choice_functions (ls : state) (list: term list) =
 	  then help ls tl 
 	  else 
 	    let _ = ls.choice_functions <- hd::ls.choice_functions in
-              Util.sysout 0 ("\n *** Modified list of choice operators: "^(show_list (List.map Term.to_string ls.choice_functions))^" ***\n");
+              Util.sysoutf 0 (fun () -> ("\n *** Modified list of choice operators: "^(show_list (List.map Term.to_string ls.choice_functions))^" ***\n"));
 	      help ls tl in
   let res = help ls list in
     res
@@ -669,18 +663,18 @@ let print_actpas_sets lightest lightest' ignored_clauses st =
   let curloop_name = loopK ^ string_of_int st.loop_count in
     Util.sysout 0 ("\"" ^ curloop_name ^ "\"[\n");
     Util.sysout 0 ("  shape = record\n");
-    Util.sysout 0 ("  label = \"<head>" ^ loopK ^ " " ^ string_of_int st.loop_count ^ " | {" ^
+    Util.sysoutf 0 (fun () -> ("  label = \"<head>" ^ loopK ^ " " ^ string_of_int st.loop_count ^ " | {" ^
       String.concat " | "
         (List.map (fun cl ->
                      "<f" ^ string_of_int cl.cl_number ^ "> " ^ string_of_int cl.cl_number)
            (List.sort Stdlib.compare (Set_of_clauses.elements st.passive))) ^
-      "} | {");
+      "} | {"));
 
-    Util.sysout 0 (String.concat " | "
+    Util.sysoutf 0 (fun () -> (String.concat " | "
         (List.map (fun cl ->
                      "<f" ^ string_of_int cl.cl_number ^ "> " ^ string_of_int cl.cl_number)
            (List.sort Stdlib.compare (Set_of_clauses.elements st.active))) ^
-      "} | {");
+      "} | {"));
 
     let ignored_clauses' =
       (*ignored_clauses should be disjoint from active & passive sets,
@@ -692,18 +686,18 @@ let print_actpas_sets lightest lightest' ignored_clauses st =
     (*FIXME possible improvement:
       if !lastloop_no = 0 then print all the clauses in the protocol so far,
       to include the clauses generated during preprocessing.*)
-    Util.sysout 0 (String.concat " | "
+    Util.sysoutf 0 (fun () -> (String.concat " | "
         (List.map (fun cl ->
                      "<f" ^ string_of_int cl.cl_number ^ "> " ^ string_of_int cl.cl_number)
            (List.sort Stdlib.compare (Set_of_clauses.elements ignored_clauses'))) ^
-      "}\"\n];\n");
+      "}\"\n];\n"));
 
     if !lastloop_no > 0 then
       if !lastloop_ran then
-        Util.sysout 0 (lastloop_name ^ ":f" ^ string_of_int lightest.cl_number ^ " -> " ^
-                         curloop_name ^ ":f" ^ string_of_int lightest'.cl_number ^ ";\n")
+        Util.sysoutf 0 (fun () -> (lastloop_name ^ ":f" ^ string_of_int lightest.cl_number ^ " -> " ^
+                         curloop_name ^ ":f" ^ string_of_int lightest'.cl_number ^ ";\n"))
       else
-        Util.sysout 0 (lastloop_name ^ ":f" ^ string_of_int lightest.cl_number ^ " -> " ^
-                         curloop_name ^ ":head;\n");
+        Util.sysoutf 0 (fun () -> (lastloop_name ^ ":f" ^ string_of_int lightest.cl_number ^ " -> " ^
+                         curloop_name ^ ":head;\n"));
 
     lastloop_no := st.loop_count;

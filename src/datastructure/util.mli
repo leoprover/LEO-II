@@ -1,5 +1,7 @@
 val debuglevel : int ref
 val sysout : int -> string -> unit
+val sysoutf : int -> (unit -> string) -> unit
+(** As [sysout], but the message is built only when it will be shown. *)
 (*val tmpfiles : string list ref*)
 module StringSet :
   sig

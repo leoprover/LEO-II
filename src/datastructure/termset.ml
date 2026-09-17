@@ -746,7 +746,7 @@ let insert ts nodestruct =
           ) with Failure s -> failwith s
                | _ -> failwith ("node "^(string_of_int id1)^"\n "^(term_to_hotptp ts id1)^" at function position has no type\n");
         ) with Failure s ->
-          Util.sysout 1 ("while inserting node "^(string_of_int id)^": Appl_node("^(string_of_int id1)^","^(string_of_int id2)^"):\n"^s^"\n") in
+          Util.sysoutf 1 (fun () -> ("while inserting node "^(string_of_int id)^": Appl_node("^(string_of_int id1)^","^(string_of_int id2)^"):\n"^s^"\n")) in
       id
   | Bound_node(typ,i) ->
       if Hashtbl.mem ts.term2id nodestruct

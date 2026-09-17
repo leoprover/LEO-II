@@ -277,9 +277,9 @@ let run_schedules () =
     in
       if Build_config.debug then
         begin
-          Util.sysout 2 ("Schedule " ^ string_of_int (sched_inc ()) ^
+          Util.sysoutf 2 (fun () -> ("Schedule " ^ string_of_int (sched_inc ()) ^
           " (total of " ^ string_of_float duration ^ "s" ^
-          ", E gets slices of maximum " ^ string_of_int atptmo ^ ")\n")
+          ", E gets slices of maximum " ^ string_of_int atptmo ^ ")\n"))
         end;
 
       State.set_current_success_status None Unknown;
@@ -357,7 +357,7 @@ let execute_conf () =
                 (Strategy_scheduling.compute_strategies global_conf probfilename)
             in
               Queue.clear global_conf.schedules;
-              if Build_config.debug then Util.sysout 2 ("Duration of slices: " ^ string_of_int timeslice);
+              if Build_config.debug then Util.sysoutf 2 (fun () -> ("Duration of slices: " ^ string_of_int timeslice));
               (*enqueue schedules*)
               List.iter
                 (fun strat ->
@@ -374,8 +374,8 @@ let execute_conf () =
               ignore(run_schedules ());
               sys_time_offset := !sys_time_offset +. !State.problem_cumulative_time;
 
-              Util.sysout 0 (State.szs_result None(*FIXME state info not available?*)
-                                          ^ "\n")
+              Util.sysoutf 0 (fun () -> (State.szs_result None(*FIXME state info not available?*)
+                                          ^ "\n"))
           in
             begin
               sys_time_offset := Sys.time ();
@@ -400,7 +400,7 @@ let rec process args = match args with
       then
 	( Automation.atp_cmds := (atp, executable) :: !Automation.atp_cmds;
 	  Automation.atp_configured := true;
-	  Util.sysout 1 ("  Configured: " ^ atp ^ " = " ^ executable ^ "\n");
+	  Util.sysoutf 1 (fun () -> ("  Configured: " ^ atp ^ " = " ^ executable ^ "\n"));
 	);
 	process args
   | ANALYZE :: args ->

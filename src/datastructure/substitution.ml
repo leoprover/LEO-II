@@ -138,7 +138,7 @@ and shift_bound_f idx s shift1 env t =
   | _ -> t
 
 and subst_occs idx s t =
-(*  Util.sysout 3 ((!mv)^"subst_occ: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n");*)
+(*  Util.sysoutf 3 (fun () -> ((!mv)^"subst_occ: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n"));*)
   List.rev (List.map (fun (a,b) ->  ((subst_repl_f idx s a b),(occurrences t a idx))) s)
 
 and rebuild_appl idx s t args env =
@@ -150,14 +150,14 @@ and rebuild_appl idx s t args env =
 (*  | _,_ -> t *)
 
 and apply_subst' idx s t occs args scope shift offset =
-(*  Util.sysout 3 ((!mv)^"subst: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n");
-  Util.sysout 3 ((!mv)^"  args: "^(string_of_int (List.length args)));
+(*  Util.sysoutf 3 (fun () -> ((!mv)^"subst: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n"));
+  Util.sysoutf 3 (fun () -> ((!mv)^"  args: "^(string_of_int (List.length args))));
   Util.sysout 3 (", scope: "^(string_of_int scope));
   Util.sysout 3 (", shift: "^(string_of_int shift)^"\n");
   let mv_old=(!mv) in
   mv:="|"^(!mv);*)
-(*  Util.sysout 3 ("subst': "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n");
-  List.iter (fun (a,b) -> Util.sysout 3 ((Term.to_string (Termset.retrieve idx.termbase a))^"/"^(Term.to_string (Termset.retrieve idx.termbase b))^",\n"))
+(*  Util.sysoutf 3 (fun () -> ("subst': "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n"));
+  List.iter (fun (a,b) -> Util.sysoutf 3 (fun () -> ((Term.to_string (Termset.retrieve idx.termbase a))^"/"^(Term.to_string (Termset.retrieve idx.termbase b))^",\n")))
             s;
   Util.sysout 3 "]\n";*)
   let occs = List.filter (fun a -> match a with (_,Empty) -> false | _ -> true) occs in
@@ -181,20 +181,20 @@ and apply_subst' idx s t occs args scope shift offset =
         []     -> insert idx.termbase (Abstr_node(ty,
                   apply_subst' idx s t1 (((shift_bound_f idx s shift),(beta_reducable t1 idx))::(next_abstr occs)) [] (scope+1) shift offset))
       | (a1,ty1)::ar -> apply_subst' idx s t1 ((a1,(beta_reducable t1 idx))::(next_abstr occs)) ar scope (shift - 1) offset)
-  | Appl_node (t1,t2) ->  (*Util.sysout 3 ((!mv)^"new_arg: "^(Term.to_string (Termset.retrieve idx.termbase t2))^"\n");*)
+  | Appl_node (t1,t2) ->  (*Util.sysoutf 3 (fun () -> ((!mv)^"new_arg: "^(Term.to_string (Termset.retrieve idx.termbase t2))^"\n"));*)
                           apply_subst' idx s t1 (next_func occs)
                           (((insert_arg_f idx s t2 (Env((next_arg occs),[],scope,shift,offset))),(Termset.type_of idx t2))::args)
                           scope shift offset
   in
 (*  mv:=mv_old;
-  Util.sysout 3 ((!mv)^"ret:   "^(Term.to_string (Termset.retrieve idx.termbase t_new))^"\n");
-  Util.sysout 3 ((!mv)^"  from: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n");
-  Util.sysout 3 ((!mv)^"  args: "^(string_of_int (List.length args)));
+  Util.sysoutf 3 (fun () -> ((!mv)^"ret:   "^(Term.to_string (Termset.retrieve idx.termbase t_new))^"\n"));
+  Util.sysoutf 3 (fun () -> ((!mv)^"  from: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n"));
+  Util.sysoutf 3 (fun () -> ((!mv)^"  args: "^(string_of_int (List.length args))));
   Util.sysout 3 (", scope: "^(string_of_int scope));
   Util.sysout 3 (", shift: "^(string_of_int shift)^"\n");*)
   index_node t_new idx;
 (*  Util.sysout 3 "indexed\n";
-  Util.sysout 3 ("    --> "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n[\n");*)
+  Util.sysoutf 3 (fun () -> ("    --> "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n[\n"));*)
   t_new
 
 
@@ -205,8 +205,8 @@ let apply_subst idx s t =
   let occs = subst_occs idx s t in
   apply_subst' idx s t occs [] 0 0 0
   with e -> Util.sysout 3 ((Printexc.to_string e)^"\n");
-  Util.sysout 3 ("subst: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n[\n");
-  List.iter (fun (a,b) -> Util.sysout 3 ((Term.to_string (Termset.retrieve idx.termbase a))^"/"^(Term.to_string (Termset.retrieve idx.termbase b))^",\n"))
+  Util.sysoutf 3 (fun () -> ("subst: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n[\n"));
+  List.iter (fun (a,b) -> Util.sysoutf 3 (fun () -> ((Term.to_string (Termset.retrieve idx.termbase a))^"/"^(Term.to_string (Termset.retrieve idx.termbase b))^",\n")))
             s;
   Util.sysout 3 "]\n";
   raise (Failure "apply_subst")

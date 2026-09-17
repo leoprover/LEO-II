@@ -135,7 +135,7 @@ and add_pars ty =
 
 
 let rec all_arg_types_up_to_goal_type t gt =
-  Util.sysout 3 ("\n all_arg_types_up_to_goal_type: "^(to_string t)^" "^(to_string gt));
+  Util.sysoutf 3 (fun () -> ("\n all_arg_types_up_to_goal_type: "^(to_string t)^" "^(to_string gt)));
   if t = gt then (true,[])
   else
     match t with
