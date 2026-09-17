@@ -1,0 +1,61 @@
+                    THE LEO-II System -- Changes
+
+v1.8.0
+------
+
+LEO-II 1.8.0 proves what 1.7.0 proves.  Every change below is either a
+portability fix or something switched off by default.  The point of the release
+is that the prover builds and runs on a current system again.
+
+Building
+
+  * No preprocessor.  camlp4 has no OCaml 5 release, so the macros it provided
+    are gone.  What they decided now lives in src/general/build_config.ml, a
+    file the Makefile writes from the same variables that used to become -D
+    switches, and the sites that used IFDEF are ordinary conditionals.  The
+    build needs no package beyond ocamlfind.
+  * OCaml 5.  Tested with 5.5.0 and OTP 29, and still builds on OCaml 4.02 and
+    later.  Two constructs only camlp4 accepted are written in standard OCaml,
+    the removed String.uppercase family and Pervasives are replaced, and the
+    compiler is told where unix and str live under the 5.0 library layout.
+  * C++11 and later.  The bundled MiniSAT separated its PRI* macros from the
+    adjacent string literals, and the default argument in the mkLit friend
+    declaration moved to the definition.  No -std fallback is needed.
+  * The build is warning-free.
+
+Behaviour
+
+  * E is called with --auto.  LEO-II passed -xAuto -tAuto, whose values E 3.x no
+    longer accepts, so every call to its first-order partner failed silently and
+    LEO-II was left with its own calculus.  That was not merely a loss of yield:
+    saturating with an incomplete calculus, it could report CounterSatisfiable
+    for a statement that is a theorem.
+  * The THF parser reads an unparenthesised negation.  The grammar accepted only
+    ~ (F), so the standard ~ P failed with a syntax error.
+
+New, and off by default
+
+  * A term order, in src/datastructure/ncpo.ml: the computability path order of
+    Niederhauser and Middeldorp, adapted to LEO-II's terms.  It is not known to
+    be transitive, so it decides one pair at a time and must never be used to
+    sort; see ncpo.mli.  "make ncpo_test" checks it against the worked examples
+    of the paper.  Nothing in the calculus calls it yet.
+  * A clause weight and a given-clause selection that alternates between the
+    lightest and the oldest clause, in the ratio --ageWeightRatio sets.  Select
+    it with --order weight.  Over the 294 higher-order problems of Benzmueller
+    and Scott's ontological-argument dataset it proves as many as the default
+    does and no more, which is why it is not the default.
+
+Fixed along the way
+
+  * Term.compare compared term weights, so two distinct terms of equal weight
+    compared equal and a set keyed on it dropped elements silently.
+  * The weight behind the "naive" setting sorted the whole signature on every
+    symbol lookup.
+  * Six handlers matched the message inside a Failure value; they raise and
+    catch named exceptions now, continuing what the sources had begun.
+
+v1.7.0 and earlier
+------------------
+
+See the repository history at https://github.com/leoprover/LEO-II.
