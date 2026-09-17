@@ -14,7 +14,6 @@ open State
 open Main
 open Calculus
 open Str
-module Bytes = String
 
 let rec compose (rl:(cl_clause list -> state -> cl_clause list) list) =
   match rl with
@@ -339,7 +338,7 @@ let read_file name =
         raise exc
     end;
     close_in file;
-    buf
+    Bytes.to_string buf
 
 (*Eliminates \n to facilitate searching using regex*)
 let eliminate_newlines s =
