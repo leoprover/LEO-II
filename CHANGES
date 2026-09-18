@@ -45,18 +45,48 @@ Reading more of TPTP
   * A single-quoted atom is a legal type name.  69 THF problems of the library
     use one and could not be read at all.
 
+A parallel portfolio, off by default
+
+  * --cores N runs N branches at once and answers with the first that settles
+    the problem.  A branch is this same binary re-executed with different
+    flags, so each takes the ordinary code path and the soundness of the whole
+    is the soundness of one run; nothing is shared between branches but the
+    answer.  The branches are listed at portfolio_branches in src/toplevel/leo.ml.
+  * The reason to run them side by side rather than one after another is that
+    the settings which solve what the default cannot are the same settings that
+    lose most of what it can.  The relevance filter is the plain case: on its
+    own it answers 96 of 294 where the default answers 167, and it answers 20
+    of the 126 the default misses.  Measuring it only on those 126 makes it
+    look like the best lever there is, which is how it was nearly made a
+    default.  A setting like that is worthless first and valuable second.
+  * The default is one core, at which none of this code runs.  That keeps the
+    prover comparable with the single-core first-order provers it is usually
+    measured against, and makes the parallel figures below a statement about
+    what four cores buy, not a like-for-like comparison with them.
+
 Measured over the 294 higher-order problems of Benzmueller and Scott's
 ontological-argument dataset, against 1.8.0 under identical conditions:
 
-    limit     1.8.0    1.9.0
-    10 s       154      168
+    limit     1.8.0    1.9.0    1.9.0 --cores 4
+    10 s       154    166-168        194
     60 s       171      178
 
-None of the 45 statements the dataset records as non-theorems is proved at
-either limit, by either version.
+Repeated runs of the same build differ by about two problems, which is why the
+ten-second figure is given as a range.  For scale, on the same problems and the
+same limit of ten seconds, Vampire proves 173, Leo-III 158, and E 209; 71 of
+the 294 are proved by none of them.
 
-and over 477 TPTP THF problems recorded as having a countermodel, 1.9.0 claims
-a proof of none of them.  test/tptp_check.py runs that check.
+None of the 45 statements the dataset records as non-theorems is proved at
+either limit, by either version, on one core or on four.
+
+Over 477 TPTP THF problems recorded as having a countermodel, 1.9.0 claims a
+proof of none of them, on one core or on four.  test/tptp_check.py runs that
+check, and --leoargs puts a candidate setting through it before it becomes a
+default.  It is not decoration: the fof_experiment_erased translation proves
+170 of the 294, six more than the default encoding, and proves four TPTP
+problems that have countermodels.  Erasing types buys those six with
+unsoundness, and LEO-II does not reconstruct the first-order proofs that would
+catch it.  The default encoding is unchanged.
 
 v1.8.0
 ------

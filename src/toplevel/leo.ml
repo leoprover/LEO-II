@@ -68,6 +68,9 @@ let help () = print_string ("\
      --atp ATP=EXEC             Set the exec file for external prover ATP to EXEC\n \
                                 (overrides the .leoatprc file, option can be used repeatedly)\n \
      --atprc FILE               Set ATP config file\n \
+     --cores N                  Run N portfolio branches in parallel, one per core,\n \
+                                and answer with the first that succeeds\n \
+     Default: 1 (no parallelism; the branches are listed at portfolio_branches)\n \
      --atptimeout N, -at N      Set the ATPtimeout (calls to E) to N seconds\n \
      --atpfrequency N, -af N    Call the first-order prover every N iterations\n \
                                 Default: 30s sec\n \
@@ -576,6 +579,197 @@ let rec process args = match args with
       process args
   | [] -> execute_conf ()
 
+(*A parallel portfolio.
+
+  LEO-II runs its strategies one after another inside a single budget on a
+  single core.  That ordering cannot be fixed by reordering, because the
+  settings that solve what the default cannot are exactly the settings that
+  lose most of what it can.  The relevance filter is the clearest case: it
+  answers 96 of the 294 problems of the ontological-argument set on its own,
+  and 20 of the 126 that the default misses.  As a default it is a disaster;
+  as a sibling it is the most valuable branch there is.
+
+  Measured on those 294 problems at ten seconds, as the union over branches:
+
+    1 branch  166     2 branches  182     3 branches  188     4 branches  190
+
+  A branch is this same binary re-executed with different flags, so every
+  branch takes the ordinary code path and the soundness of the whole is the
+  soundness of a single run.  Nothing is shared between branches but the
+  answer.  The default is one core, and at one core none of this code runs,
+  so single-core behaviour is unchanged -- which also keeps LEO-II comparable
+  with the single-core first-order provers it is usually measured against.*)
+let portfolio_branches =
+  [| [];
+     ["--relevancefilter"; "1"];
+     ["--translation"; "fof_experiment"];
+     ["-ns"] |]
+
+(*A status that settles the problem.  Anything else (Unknown, Timeout, Error,
+  GaveUp) is a branch failing, and the next branch is still worth waiting for.*)
+let conclusive_status line =
+  let statuses =
+    ["Theorem"; "Unsatisfiable"; "ContradictoryAxioms";
+     "CounterSatisfiable"; "Satisfiable"] in
+  let marker = "SZS status " in
+  match String.index_opt line 'S' with
+    | None -> false
+    | Some _ ->
+        let n = String.length marker and l = String.length line in
+        let rec at i =
+          if i + n > l then false
+          else if String.sub line i n = marker then
+            let rest = String.sub line (i + n) (l - i - n) in
+              List.exists
+                (fun st ->
+                   let m = String.length st in
+                     String.length rest >= m && String.sub rest 0 m = st)
+                statuses
+          else at (i + 1)
+        in at 0
+
+let file_is_conclusive path =
+  try
+    let ch = open_in path in
+    let rec scan () =
+      match (try Some (input_line ch) with End_of_file -> None) with
+        | None -> false
+        | Some l -> if conclusive_status l then true else scan ()
+    in
+    let r = scan () in close_in ch; r
+  with Sys_error _ -> false
+
+let dump_file path =
+  try
+    let ch = open_in path in
+    let rec go () =
+      match (try Some (input_line ch) with End_of_file -> None) with
+        | None -> ()
+        | Some l -> print_endline l; go ()
+    in go (); close_in ch
+  with Sys_error _ -> ()
+
+(*Strip "--cores N" from an argument list, so that what is handed to a branch
+  is the user's own command line and nothing else.*)
+let rec strip_cores = function
+  | "--cores" :: _ :: xs -> strip_cores xs
+  | x :: xs -> x :: strip_cores xs
+  | [] -> []
+
+(*Branches must not share a scratch directory.  LEO-II names its temporary
+  files after the problem's basename alone, so two branches working on the
+  same problem write, and then unlink, the same file; the loser dies with
+  ENOENT on a file it had every reason to expect.  Each branch therefore gets
+  its own directory underneath whichever one the user asked for.  The option
+  is removed and reinserted rather than appended, so that there is exactly one
+  of it and no question of which occurrence wins.*)
+let rec strip_tmp = function
+  | ("--tmp" | "-tmp") :: _ :: xs -> strip_tmp xs
+  | x :: xs -> x :: strip_tmp xs
+  | [] -> []
+
+let rec tmp_of = function
+  | ("--tmp" | "-tmp") :: d :: _ -> Some d
+  | _ :: xs -> tmp_of xs
+  | [] -> None
+
+let rec cores_of = function
+  | "--cores" :: n :: _ -> (try Some (int_of_string n) with Failure _ -> None)
+  | _ :: xs -> cores_of xs
+  | [] -> None
+
+(*Run the first n branches at once and exit with the first conclusive answer.
+  Does not return.*)
+let run_portfolio n com_line =
+  let base = strip_tmp (strip_cores com_line) in
+  let tmp_root =
+    match tmp_of com_line with
+      | Some d -> d
+      | None -> Filename.get_temp_dir_name () in
+  let n = min n (Array.length portfolio_branches) in
+  let scratch =
+    Array.init n
+      (fun i ->
+         let d = Filename.concat tmp_root
+                   (Printf.sprintf "leo_branch_%d_%d" (Unix.getpid ()) i) in
+           (try Unix.mkdir d 0o700 with Unix.Unix_error _ -> ()); d) in
+  let outputs = Array.init n (fun i -> Filename.temp_file "leo_branch" (string_of_int i ^ ".out")) in
+  let children =
+    Array.init n
+      (fun i ->
+         let argv =
+           Array.of_list
+             (Sys.executable_name ::
+                (base @ portfolio_branches.(i) @ ["--tmp"; scratch.(i)])) in
+           match Unix.fork () with
+             | 0 ->
+                 (*Own session, hence own process group, so that killing a
+                   branch also kills the first-order prover it has running
+                   underneath it.  Its output already goes to a file, so it
+                   has no use for the controlling terminal.*)
+                 (try ignore (Unix.setsid ()) with Unix.Unix_error _ -> ());
+                 let fd = Unix.openfile outputs.(i)
+                            [Unix.O_WRONLY; Unix.O_CREAT; Unix.O_TRUNC] 0o600 in
+                   Unix.dup2 fd Unix.stdout;
+                   Unix.dup2 fd Unix.stderr;
+                   Unix.close fd;
+                   (try Unix.execv Sys.executable_name argv
+                    with _ -> exit 2)
+             | pid -> pid)
+  in
+  let alive = Array.make n true in
+  let kill_rest except =
+    Array.iteri
+      (fun i pid ->
+         if i <> except && alive.(i) then
+           begin
+             (try Unix.kill (- pid) Sys.sigkill with Unix.Unix_error _ -> ());
+             (try Unix.kill pid Sys.sigkill with Unix.Unix_error _ -> ());
+             alive.(i) <- false
+           end)
+      children in
+  let cleanup () =
+    Array.iter (fun f -> try Sys.remove f with Sys_error _ -> ()) outputs;
+    Array.iter
+      (fun d ->
+         (try Array.iter (fun f -> try Sys.remove (Filename.concat d f)
+                                   with Sys_error _ -> ()) (Sys.readdir d)
+          with Sys_error _ -> ());
+         (try Unix.rmdir d with Unix.Unix_error _ -> ()))
+      scratch in
+  let index_of_pid pid =
+    let r = ref (-1) in
+      Array.iteri (fun i p -> if p = pid then r := i) children; !r in
+  let rec wait_for remaining =
+    if remaining = 0 then None
+    else
+      match (try Some (Unix.wait ()) with Unix.Unix_error _ -> None) with
+        | None -> None
+        | Some (pid, status) ->
+            let i = index_of_pid pid in
+              if i < 0 then wait_for remaining
+              else
+                begin
+                  alive.(i) <- false;
+                  if file_is_conclusive outputs.(i) then Some (i, status)
+                  else wait_for (remaining - 1)
+                end
+  in
+    match wait_for n with
+      | Some (i, status) ->
+          kill_rest i;
+          dump_file outputs.(i);
+          cleanup ();
+          exit (match status with Unix.WEXITED c -> c | _ -> 1)
+      | None ->
+          (*Nobody settled it.  Report the default branch, which is the one
+            whose inconclusive answer the user would have got anyway.*)
+          kill_rest (-1);
+          dump_file outputs.(0);
+          cleanup ();
+          exit 1
+
+
 let leo_main () =
   (*POSIX signal number for "CPU time limit exceeded"*)
   let sigxcpu = 24
@@ -605,7 +799,13 @@ let leo_main () =
       (*FIXME could make dependent on a DEBUG switch:
         ignore(Sys.signal Sys.sigchld Sys.Signal_ignore); *)
         let com_line = List.tl (Array.to_list Sys.argv) in
-        let args = parse_cl com_line [] in
+        (*The portfolio is decided before anything else is set up: a branch is
+          a fresh process running the ordinary command line, so the supervisor
+          must not have started proving anything itself.*)
+        (match cores_of com_line with
+           | Some n when n > 1 -> run_portfolio n com_line (*does not return*)
+           | _ -> ());
+        let args = parse_cl (strip_cores com_line) [] in
           process args
       with
         | Termination maybe_st ->
