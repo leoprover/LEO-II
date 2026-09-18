@@ -34,6 +34,44 @@ let rec execute_commands cmds =
 
 (*a strategy is a list of commands. this function produces
   a list of strategies based on the problem's features*)
+(* What a portfolio measurement says about the strategies below, so that the
+   next person need not repeat it.
+
+   Every setting LEO-II can be given was run, one at a time with the full time
+   limit, over the 126 of the 294 higher-order problems of Benzmueller and
+   Scott's ontological-argument dataset that the plain configuration does not
+   solve.  Eighteen settings, ten seconds each.  What they contribute, counted
+   as problems the plain configuration does not get:
+
+     relevance filter 1                20      prim-subst 0              6
+     clause selection by weight         6      no extensional unif.      5
+     unfold-defs late                   2      max-uni-depth 3           2
+     max-uni-depth 10                   2      atp-timeout 5             1
+     no Andrews-EQ replacement          1      the other eight           0
+
+   Three things follow.
+
+   The settings this function reaches for are among the ones that contribute
+   nothing: relevance filter 2 and prim-subst 2 and 3 solve none of the 126.
+   Filtering at level 2 is weaker than at level 1, not stronger, because the
+   tolerance falls with each round, so a higher level admits more in its first
+   round.  Raising prim-subst never paid; turning it off did.
+
+   The individual contributions sum to 46 but cover only 29 distinct problems,
+   and 97 of the 126 are out of reach of every setting.  No arrangement of
+   these flags will find them.
+
+   And a schedule built from those numbers -- plain, then filter 1, then
+   prim-subst 0 -- was measured and gains nothing: 167 against 168 at a ten
+   second limit, 179 against 178 at sixty.  The reason is a flaw in the
+   arithmetic, not in the settings: the portfolio measured each setting with
+   the whole budget, while a schedule gives it a share, and what the added
+   strategies find the shortened first slice loses.  A portfolio meant to
+   predict a schedule must measure each setting at the slice length it will
+   actually get.
+
+   The strategies below are therefore left as they were. *)
+
 let compute_strategies global_conf filename : string list list =
   let body =
     if global_conf.analyze

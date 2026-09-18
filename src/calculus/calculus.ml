@@ -3998,64 +3998,49 @@ let get_clause_consts st cl =
        consts
 
 
+(*A round of relevance filtering.  An axiom is kept when it shares an
+  uninterpreted symbol with what is already selected and introduces at most
+  `tolerance` symbols that are new to it.  The selected axioms join the
+  selection and the next round runs with a tolerance one smaller, so each round
+  admits less than the one before it.
+
+  Three things were wrong here before.  The overlap was tested by comparing the
+  number of new symbols against the length of the symbol list, which counts
+  occurrences and is not deduplicated, so an axiom sharing nothing passed as
+  soon as one of its own symbols occurred twice.  An axiom with no uninterpreted
+  symbols at all failed that test for the opposite reason, 0 < 0, and could
+  never be selected however relevant it was.  And the difference of the two
+  symbol lists was computed with List.mem, once per axiom per round.
+
+  Dropping axioms costs completeness and nothing else: a proof from a subset of
+  the axioms is still a proof.  That is what makes the filter safe.*)
 let rec filter_axioms_wrt_conjecture_h_1 (st:state) (axiom_clauses: cl_clause list) (conj_clauses: cl_clause list) (level:int) (result: cl_clause list) =
-  Util.sysoutf 3 (fun () -> ("\n   Enter filter_axioms_wrt_conjecture_h_1 with level: "^(string_of_int level)));   
-  Util.sysout 3 ("\n   Conjecture clauses : ");
-  List.iter (fun cl ->  Util.sysout 3 ((string_of_int cl.cl_number)^" ")) conj_clauses;
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) conj_clauses;
-  Util.sysout 3 ("\n   Axiom clauses : "); 
-  List.iter (fun cl ->  Util.sysout 3 ((string_of_int cl.cl_number)^" ")) axiom_clauses;
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) axiom_clauses;
-  Util.sysout 3 ("\n   Result clauses : "); 		   
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) result;
-  
-  let difference list1 list2 =
-    let res = ref [] 
-    in
-      (List.iter (fun entry -> 
-		   if (List.mem entry !res) 
-		     || (List.mem entry list2) 
-		   then ()
-		   else res := (entry::!res))
-	list1);
-      !res in
-
-  let print_info symlist = 
-    Util.sysout 3 ("[ ");  
-    List.iter (fun sym ->  Util.sysout 3 (sym^" ")) symlist;
-    Util.sysout 3 ("]\n") in  
-    
-    if level = 0 then result
-    else 
-      let consts_in_conj_cls = List.flatten (List.map (fun cl -> get_clause_consts st.signature cl) conj_clauses) in
-      let _ = Util.sysout 3 (" consts_in_conj_cls: "); print_info consts_in_conj_cls in
-      let (axiom_clauses_sharing_symbols,others) =  
-	List.partition (fun cl -> 
-			  let consts_in_cl = get_clause_consts st.signature cl in
-			    Util.sysoutf 3 (fun () -> (" consts_in_cln "^(string_of_int cl.cl_number)^": ")); 
-			    print_info consts_in_cl;
-			    let difference_set1 = difference consts_in_cl consts_in_conj_cls in
-
-(*
-			    and difference_set2 = difference consts_in_conj_cls  consts_in_cl in
-			      Util.sysout 3 (" difference set1: "); 
-			      print_info difference_set1;
-			      Util.sysout 3 (" difference set2: "); 
-			      print_info difference_set2;
-			      
-			      let max = (max (List.length difference_set1) (List.length difference_set2)) in 
-*)
-			     
-			      let max = (List.length difference_set1) in
-
-				(
-				  max < (List.length consts_in_cl) 
-			       && 
-				  max <= level
-			      )
-		       )
-	  axiom_clauses in    
-	filter_axioms_wrt_conjecture_h_1 st others (axiom_clauses_sharing_symbols@conj_clauses) (level - 1) (axiom_clauses_sharing_symbols@result)
+  if level <= 0 then result
+  else
+    let tolerance =
+      if st.flags.relevance_tolerance >= 0 then st.flags.relevance_tolerance else level in
+    let selected = Hashtbl.create 97 in
+    let () =
+      List.iter
+        (fun cl -> List.iter (fun c -> Hashtbl.replace selected c ()) (get_clause_consts st.signature cl))
+        conj_clauses in
+    let keep cl =
+      let consts = get_clause_consts st.signature cl in
+        if consts = [] then true      (*nothing to be irrelevant about*)
+        else
+          let fresh = Hashtbl.create 17 in
+          let shared = ref false in
+            List.iter
+              (fun c ->
+                 if Hashtbl.mem selected c then shared := true
+                 else Hashtbl.replace fresh c ())
+              consts;
+            !shared && Hashtbl.length fresh <= tolerance in
+    let (sharing, others) = List.partition keep axiom_clauses in
+      if sharing = [] then result
+      else
+        filter_axioms_wrt_conjecture_h_1 st others (sharing @ conj_clauses)
+          (level - 1) (sharing @ result)
 
 let rec filter_axioms_wrt_conjecture_h_2 (st:state) (axiom_clauses: cl_clause list) (conj_clauses: cl_clause list) (level:int) (result: cl_clause list) =
   Util.sysoutf 3 (fun () -> ("\n   Enter filter_axioms_wrt_conjecture_h_2 with level: "^(string_of_int level)));   
@@ -4131,8 +4116,16 @@ let rec filter_axioms_wrt_conjecture (st:state) (axiom_clauses: cl_clause list) 
       if level > 0 
       then 
 	let res = (filter_axioms_wrt_conjecture_h_1 st axiom_clauses conj_clauses level []) in
+	  (*A filter that selects nothing is worse than no filter.  Widening used to
+	    recurse without a bound; past the number of symbols in the problem there
+	    is nothing left to admit, so it gives up and keeps everything.*)
+	  (*Widening the level cannot help when the tolerance is pinned, since the
+	    tolerance is what admits anything; retrying then only wastes the
+	    budget.*)
 	  if (not (axiom_clauses = [])) && (res = [])
-	  then filter_axioms_wrt_conjecture st axiom_clauses conj_clauses (level + 1) 
+	  then
+	    if level > 64 || st.flags.relevance_tolerance >= 0 then axiom_clauses
+	    else filter_axioms_wrt_conjecture st axiom_clauses conj_clauses (level + 1)
 	  else res
       else 
 	let res = (filter_axioms_wrt_conjecture_h_2 st axiom_clauses conj_clauses level []) in

@@ -180,6 +180,8 @@ type flags = {
     mutable prim_subst : int;
     mutable unfold_defs_early : bool;
     mutable relevance_filter : int;
+    (*tolerance for new symbols in one round; -1 means "use the level"*)
+    mutable relevance_tolerance : int;
     mutable replace_leibnizEQ : bool;
     mutable replace_andrewsEQ : bool;
     mutable use_choice : bool;
@@ -280,6 +282,7 @@ let state_initialize =
                prim_subst = 3;
                unfold_defs_early = true;
                relevance_filter = 0;
+               relevance_tolerance = -1;
                replace_leibnizEQ = true;
                replace_andrewsEQ = true;
                use_choice = true;
@@ -556,6 +559,10 @@ let set_flag_unfold_defs_early (ls : state) (flag : bool) =
 let set_flag_relevance_filter (ls : state) (i : int) =
   ls.flags.relevance_filter <- i;
   i
+
+let set_flag_relevance_tolerance (ls : state) (i : int) =
+  ls.flags.relevance_tolerance <- i;
+  ls.flags.relevance_tolerance
 
 let set_flag_replace_leibnizEQ (ls : state) (flag : bool) =
   ls.flags.replace_leibnizEQ <- flag;

@@ -83,6 +83,7 @@ type flags = {
     mutable prim_subst : int;
     mutable unfold_defs_early : bool;
     mutable relevance_filter : int;
+    mutable relevance_tolerance : int;
     mutable replace_leibnizEQ : bool;
     mutable replace_andrewsEQ : bool;
     mutable use_choice : bool;
@@ -231,6 +232,7 @@ val set_flag_prim_subst : state -> int -> int
 val set_flag_unfold_defs_early : state -> bool -> bool
 
 val set_flag_relevance_filter : state -> int -> int
+val set_flag_relevance_tolerance : state -> int -> int
 
 val set_flag_replace_leibnizEQ : state -> bool -> bool
 

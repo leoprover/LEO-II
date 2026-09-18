@@ -41,6 +41,7 @@ type arg =
   | PROOFOUTPUT of int
   | PROTOCOL_OUTPUT
   | RELEVANCEFILTER of int
+  | RELEVANCETOLERANCE of int
   | NOTREPLACELEIBNIZEQ
   | NOTREPLACEANDREWSEQ
   | NOTUSECHOICE
@@ -90,6 +91,7 @@ let help () = print_string ("\
                                 N=2: Print proof object with detailed information on the fo-atp contribution \n \
      --protocoloutput           Print full proof protocol. \n \
      --relevancefilter N, -rf N Set the relevance filter to N\n \
+     --relevancetolerance N     Pin the per-round tolerance for new symbols;\n\t0 is the sharpest setting\n \
                                 Default: 0\n \
      --notReplLeibnizEQ, -nrleq Do not automatically replace Leibniz EQ literals in clauses \n \
      --notReplAndrewsEQ, -nraeq Do not automatically replace Andrews EQ literals in clauses \n \
@@ -184,6 +186,8 @@ let rec parse_cl cs ps =
     | "-rf" :: xs
     | "--relevancefilter" :: xs ->
         parse_cl (tl xs) (RELEVANCEFILTER (get_cl_int (hd cs) xs) :: ps)
+    | "--relevancetolerance" :: xs ->
+        parse_cl (tl xs) (RELEVANCETOLERANCE (get_cl_int (hd cs) xs) :: ps)
     | "-nrleq" :: xs
     | "--notReplLeibnizEQ" :: xs ->
         parse_cl xs (NOTREPLACELEIBNIZEQ :: ps)
@@ -484,6 +488,14 @@ let rec process args = match args with
       process args
   | RELEVANCEFILTER n :: args ->
       ignore(State.set_flag_relevance_filter State.state_initialize (max 0 n));
+      process args
+  | RELEVANCETOLERANCE n :: args ->
+      (*How many symbols new to the selection one round may admit.  Without it
+        the tolerance falls with the round, so a higher filter level admits more
+        in its first round and prunes less; pinning it at 0 keeps only the
+        axioms that introduce nothing new, which is the sharpest the filter
+        can be.*)
+      ignore(State.set_flag_relevance_tolerance State.state_initialize (max 0 n));
       process args
   | NOTREPLACELEIBNIZEQ :: args ->
       ignore(State.set_flag_replace_leibnizEQ State.state_initialize false);
