@@ -82,10 +82,24 @@ let time_remaining_of_schedule () = !schedule_start -. Unix.gettimeofday ()
 (*FIXME min. time slices for each strategy could go in schedule record, instead of having it constant*)
 let atp_subslices = 5
 
-(*The floor under the time given to one call of the first-order prover.  A
-  slice shorter than atp_min_timeout * atp_subslices cannot carry the calls it
-  schedules.*)
+(*The floor under the time given to one call of the first-order prover.
+
+  Raising this to 2 was tried and rejected.  On the 46 problems of the
+  ontological-argument set that E alone solves in under a second and LEO-II
+  does not solve at all in ten, a floor of one second solves none and a floor
+  of two solves five, which looked like a clear gain.  It was not: measured
+  over all 294 problems the floor of two scores 166 and 167 against 168 for
+  the floor of one.  The gain was an artefact of measuring only on problems
+  the default already fails, where a change can win but never lose.*)
 let atp_min_timeout = 1
+
+(*The shortest slice worth creating.  This used to be the ATP floor times the
+  number of calls a slice schedules, which ties two independent decisions
+  together: changing the floor then also changes how many strategies get to
+  run, and a measurement of the one is confounded by the other.  Five seconds
+  is where a slice still carries a strategy; at the current floor this is the
+  same number as before, so the behaviour is unchanged.*)
+let min_slice_seconds = 5
 
 (*raises STRATEGY_TERMINATED if timeout for current schedule has expired*)
 let check_timeout () =

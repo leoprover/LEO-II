@@ -257,8 +257,7 @@ let rec parse_cl cs ps =
   a different number of slices gives the prover a limit computed for slices
   that do not exist -- which is what the FIXME under TIMEOUT below observed.*)
 let effective_slices timeout =
-  let min_useful_slice = State.atp_min_timeout * State.atp_subslices in
-    max 1 (min global_conf.time_slices (timeout / min_useful_slice))
+  max 1 (min global_conf.time_slices (timeout / State.min_slice_seconds))
 
 let cleanup () =
   Interactive.kill_children ();

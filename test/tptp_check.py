@@ -4,6 +4,7 @@ the recorded status.
 
 Usage: test/tptp_check.py --tptp ~/tmp/tptp/TPTP-v9.2.1 [--set unsound|all|theorems]
                          [--timeout 10] [--jobs 4] [--atp <eprover>] [--out FILE]
+                         [--leoargs "<flags passed on to LEO-II>"]
 
 Every TPTP problem records what is known about it.  An answer that contradicts
 that record is a bug, and the two directions are not equally interesting: a
@@ -41,9 +42,10 @@ def contradiction(exp, got):
     return None
 
 
-def run_one(leo, atp, problem, tptp, timeout, counter, writer, fh):
+def run_one(leo, atp, leoargs, problem, tptp, timeout, counter, writer, fh):
     env = dict(os.environ, TPTP=tptp)
-    args = [leo] + (['--atp', 'e=' + atp] if atp else []) + ['-t', str(timeout), problem]
+    args = ([leo] + (['--atp', 'e=' + atp] if atp else []) + ['-t', str(timeout)]
+            + leoargs + [problem])
     t0 = time.time()
     try:
         p = subprocess.Popen(args, cwd=tptp, env=env, stdout=subprocess.PIPE,
@@ -84,7 +86,11 @@ def main():
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--limit', type=int, default=0)
     ap.add_argument('--out', default='/tmp/tptp-check.csv')
+    # Extra flags for LEO-II itself, so a candidate setting can be put through the
+    # same net as the default one before it becomes the default.
+    ap.add_argument('--leoargs', default='')
     a = ap.parse_args()
+    leoargs = a.leoargs.split()
 
     tptp = os.path.abspath(os.path.expanduser(a.tptp))
     problems = sorted(glob.glob(os.path.join(tptp, 'Problems', '*', '*^*.p')))
@@ -101,8 +107,8 @@ def main():
         w = csv.writer(fh)
         w.writerow(['problem', 'recorded', 'answered', 'seconds', 'contradiction'])
         with ThreadPoolExecutor(max_workers=a.jobs) as ex:
-            rows = list(ex.map(lambda p: run_one(a.leo, a.atp, p, tptp, a.timeout,
-                                                 counter, w, fh), problems))
+            rows = list(ex.map(lambda p: run_one(a.leo, a.atp, leoargs, p, tptp,
+                                                 a.timeout, counter, w, fh), problems))
 
     agreed = sum(1 for r in rows if not r[4] and r[2] in PROVED | REFUTED)
     print('\n-- %d problems' % len(rows))
