@@ -16,7 +16,7 @@ let rev =
   if Build_config.revision = "" then "" else "(" ^ Build_config.revision ^ ")"
 
 let version () =
-  print_endline ("LEO-II version v1.8.0 " ^ rev ^ " \
+  print_endline ("LEO-II version v1.9.0 " ^ rev ^ " \
   (compiled on " ^ Sys.os_type ^ " with OCaml-" ^ Sys.ocaml_version ^ ")");
   if State.state_initialize.flags.verbose then Automation.atp_versions ()
 
@@ -27,6 +27,7 @@ type arg =
   | ATP of string
   | ATPRC of string
   | ATPTIMEOUT of int
+  | ATPFREQUENCY of int
   | DEBUG of int
   | DIR of string
   | EXPAND_EXTUNI
@@ -67,6 +68,7 @@ let help () = print_string ("\
                                 (overrides the .leoatprc file, option can be used repeatedly)\n \
      --atprc FILE               Set ATP config file\n \
      --atptimeout N, -at N      Set the ATPtimeout (calls to E) to N seconds\n \
+     --atpfrequency N, -af N    Call the first-order prover every N iterations\n \
                                 Default: 30s sec\n \
      --debug N, -D N            Set debug level to N\n \
                                 (0 = no output, 1 = minimal output, 2 = full output)\n \
@@ -145,6 +147,9 @@ let rec parse_cl cs ps =
     | "-at" :: xs
     | "--atptimeout" :: xs ->
         parse_cl (tl xs) (ATPTIMEOUT (get_cl_int (hd cs) xs) :: ps)
+    | "-af" :: xs
+    | "--atpfrequency" :: xs ->
+        parse_cl (tl xs) (ATPFREQUENCY (get_cl_int (hd cs) xs) :: ps)
     | "-D" :: xs
     | "--debug" :: xs ->
         parse_cl (tl xs) (DEBUG (get_cl_int (hd cs) xs) :: ps)
@@ -238,6 +243,19 @@ let rec parse_cl cs ps =
             parse_cl xs (FILENAME x :: ps)
     | [] -> ps (*return the arglist*)
 
+(*How many slices the budget can actually carry.  A slice shorter than the time
+  its own schedule will try to spend inside it is overrun by its first call to
+  the first-order prover, which at a short global timeout consumes the slice
+  whole and leaves the strategies after it unrun.
+
+  Everything that divides the budget must use this same number.  Deriving the
+  local time limit from the configured slice count while the scheduler creates
+  a different number of slices gives the prover a limit computed for slices
+  that do not exist -- which is what the FIXME under TIMEOUT below observed.*)
+let effective_slices timeout =
+  let min_useful_slice = State.atp_min_timeout * State.atp_subslices in
+    max 1 (min global_conf.time_slices (timeout / min_useful_slice))
+
 let cleanup () =
   Interactive.kill_children ();
   Util.delete_all_tmpfiles ()
@@ -272,7 +290,7 @@ let run_schedules () =
     let atptmo =
       (*FIXME constants can be made parameters*)
       min 25
-        (max 3
+        (max State.atp_min_timeout
            (int_of_float (duration /. float State.atp_subslices)))
     in
       if Build_config.debug then
@@ -350,10 +368,18 @@ let execute_conf () =
         if global_conf.problemfiles <> [] then
           let compute_schedules_for_prob probfilename =
             (*FIXME currently each schedule is given an equal slice of time*)
-            let timeslice = max 1 (global_conf.global_timeout / global_conf.time_slices) in
-            (*compute schedules, limited by time_slices value*)
+            (*A slice shorter than the time its own schedule will try to
+              spend inside it is wasted.  The first-order prover is asked for
+              atp_subslices calls and each has a floor of atp_min_timeout, so
+              a slice below their product is overrun by its first call; at a
+              short global timeout that consumes the slice whole and the
+              strategies after it never run at all.  The number of slices is
+              therefore capped by what the budget can carry, which leaves the
+              behaviour at long timeouts unchanged.*)
+            let slices = effective_slices global_conf.global_timeout in
+            let timeslice = max 1 (global_conf.global_timeout / slices) in
             let schedules =
-              take_upto global_conf.time_slices
+              take_upto slices
                 (Strategy_scheduling.compute_strategies global_conf probfilename)
             in
               Queue.clear global_conf.schedules;
@@ -412,6 +438,10 @@ let rec process args = match args with
   | ATPTIMEOUT n :: args ->
       global_conf.atp_timeout_forced <- Some n;
       ignore(State.set_flag_atp_timeout State.state_initialize (max 5 n));
+      process args
+  | ATPFREQUENCY n :: args ->
+      if n < 1 then error "--atpfrequency needs a positive argument";
+      ignore(State.set_flag_atp_calls_frequency State.state_initialize n);
       process args
   | DEBUG n :: args ->
       global_conf.debug <- n;
@@ -482,10 +512,10 @@ let rec process args = match args with
       let globaltmo  = (max 1 n) in
       (*ATP applied for between 1 and 25 seconds. The exact value is at most 30% of the global timeout
         if the sequence instructions (related to -t and -ns) are followed*)
-      (*FIXME update atptmo when global_conf.time_slices is updated?*)
-      let atptmo = (min 25 (max 1 (n / (global_conf.time_slices + 2)))) in 
-      (*Timeout for each slice? Assumes each strategy is given an equal amount of time*)
-      let localtmo = (max 1 (n / global_conf.time_slices)) in
+      let slices = effective_slices n in
+      let atptmo = (min 25 (max 1 (n / (slices + 2)))) in
+      (*Timeout for each slice; each strategy is given an equal amount of time*)
+      let localtmo = (max 1 (n / slices)) in
        global_conf.global_timeout <- globaltmo; (*used to scale time slices for each schedule*)
        Interactive.set_original_timeout globaltmo;
        Interactive.set_timeout localtmo; (*FIXME relevant?*)

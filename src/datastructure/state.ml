@@ -80,7 +80,12 @@ exception STRATEGY_TERMINATED
 let time_remaining_of_schedule () = !schedule_start -. Unix.gettimeofday ()
 
 (*FIXME min. time slices for each strategy could go in schedule record, instead of having it constant*)
-let atp_subslices = 2
+let atp_subslices = 5
+
+(*The floor under the time given to one call of the first-order prover.  A
+  slice shorter than atp_min_timeout * atp_subslices cannot carry the calls it
+  schedules.*)
+let atp_min_timeout = 1
 
 (*raises STRATEGY_TERMINATED if timeout for current schedule has expired*)
 let check_timeout () =
@@ -267,7 +272,7 @@ let state_initialize =
                write_fo_like_clauses = false;
                pretty_print_only = false;
                fo_translation = "fof_full";
-               atp_calls_frequency = 10;
+               atp_calls_frequency = 1;
                atp_prover = "none";
                atp_timeout = 25;
                proof_output = 0;

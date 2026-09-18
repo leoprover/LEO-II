@@ -17,6 +17,7 @@ exception STRATEGY_TERMINATED
 val time_remaining_of_schedule : unit -> float
 
 val atp_subslices : int
+val atp_min_timeout : int
 
 val check_timeout : unit -> unit
 

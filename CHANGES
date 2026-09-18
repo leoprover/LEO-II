@@ -1,7 +1,66 @@
                     THE LEO-II System -- Changes
 
+v1.9.0
+------
+
+1.9.0 proves more than 1.8.0 within the same time limit.  The calculus is
+untouched: not one inference was added, removed or changed.  What changed is
+how the time budget is divided and how much work is done and thrown away.
+
+The gain is a net one.  A handful of problems that 1.8.0 proves are lost, as
+always when a search order changes; the figures below are the balance.
+
+Three errors in the arithmetic of time
+
+  * The number of time slices was not bound by what the budget can carry.  At a
+    ten-second limit the budget was cut into four slices of two and a half
+    seconds, and in each of them one call to the first-order prover was
+    scheduled with a floor of three seconds.  The first call overran its slice,
+    and the strategies after it never ran.  The slice count is now capped by
+    the time a slice must be able to hold.
+  * The local time limit was derived from the configured slice count while the
+    scheduler created a different number of slices, so the prover was given a
+    limit computed for slices that did not exist.  Both now use the same
+    number.  The sources carried a FIXME asking exactly this question.
+  * One call to the first-order prover could take half of its slice, and the
+    first was made only at the tenth iteration of the main loop.  Both come
+    from a time when such a call was expensive.  A call now takes at most a
+    fifth of its slice and is made at every iteration.
+
+Work that was thrown away
+
+  * The message passed to sysout was built at every call site whether or not it
+    would be shown, and at the default verbosity none of it is.  363 call sites
+    pass a thunk now.  The clause renderings in the innermost loops were the
+    dominant cost: the unification search built one at every node.
+  * Six deep copies of the clause sets per iteration of the main loop, into two
+    fields that nothing reads, are gone.
+  * Assembling the translated first-order problem was quadratic in its size, on
+    every call to the first-order prover, and the guard against duplicate
+    clause names was quadratic in their number.
+  * The native build no longer passes -inline 0.
+
+Reading more of TPTP
+
+  * A single-quoted atom is a legal type name.  69 THF problems of the library
+    use one and could not be read at all.
+
+Measured over the 294 higher-order problems of Benzmueller and Scott's
+ontological-argument dataset, against 1.8.0 under identical conditions:
+
+    limit     1.8.0    1.9.0
+    10 s       154      168
+    60 s       171      178
+
+None of the 45 statements the dataset records as non-theorems is proved at
+either limit, by either version.
+
+and over 477 TPTP THF problems recorded as having a countermodel, 1.9.0 claims
+a proof of none of them.  test/tptp_check.py runs that check.
+
 v1.8.0
 ------
+
 
 LEO-II 1.8.0 proves what 1.7.0 proves.  Every change below is either a
 portability fix or something switched off by default.  The point of the release

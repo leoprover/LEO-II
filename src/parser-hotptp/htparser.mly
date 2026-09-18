@@ -750,6 +750,7 @@ atomic_type : /* Hol_type.hol_type */
   | TOK_REAL { basetype "$real" }
   | TOK_TYPE { bt_type }
   | Lower_word { basetype $1 }
+  | Single_quoted { basetype $1 }   /* a single-quoted atom is a legal type name */
 ;
 
 type_variable : /* string */
