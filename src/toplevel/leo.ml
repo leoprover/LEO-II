@@ -703,11 +703,16 @@ let run_portfolio n com_line =
                 (base @ portfolio_branches.(i) @ ["--tmp"; scratch.(i)])) in
            match Unix.fork () with
              | 0 ->
-                 (*Own session, hence own process group, so that killing a
-                   branch also kills the first-order prover it has running
-                   underneath it.  Its output already goes to a file, so it
-                   has no use for the controlling terminal.*)
-                 (try ignore (Unix.setsid ()) with Unix.Unix_error _ -> ());
+                 (*A branch stays in the process group it was forked in.
+                   Putting it in its own session was tried and is wrong: it is
+                   how callers kill this prover.  A harness, a CASC driver or a
+                   shell sends a signal to the whole group, and a branch that
+                   has left the group survives it.  Doing that for 294 problems
+                   left four immortal branches behind for every problem that
+                   ran out of time, and they were still holding the machine
+                   down hours later.  The first-order prover a branch leaves
+                   behind stops on its own CPU limit, which is bounded by
+                   atp_timeout.*)
                  let fd = Unix.openfile outputs.(i)
                             [Unix.O_WRONLY; Unix.O_CREAT; Unix.O_TRUNC] 0o600 in
                    Unix.dup2 fd Unix.stdout;
@@ -723,7 +728,9 @@ let run_portfolio n com_line =
       (fun i pid ->
          if i <> except && alive.(i) then
            begin
-             (try Unix.kill (- pid) Sys.sigkill with Unix.Unix_error _ -> ());
+             (*Only this branch.  Signalling the group would signal the
+               supervisor too, since the branch is no longer a group of its
+               own.*)
              (try Unix.kill pid Sys.sigkill with Unix.Unix_error _ -> ());
              alive.(i) <- false
            end)

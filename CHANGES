@@ -63,13 +63,20 @@ A parallel portfolio, off by default
     prover comparable with the single-core first-order provers it is usually
     measured against, and makes the parallel figures below a statement about
     what four cores buy, not a like-for-like comparison with them.
+  * A branch stays in the process group it was forked in.  Giving each its own
+    session, so that killing a branch would also kill the first-order prover
+    under it, was tried and is wrong: a signal to the process group is how
+    callers stop this prover, and a branch outside the group survives it.  Over
+    294 problems that left four immortal branches behind for every problem that
+    ran out of time.  A first-order prover left behind by a killed branch stops
+    on its own CPU limit instead.
 
 Measured over the 294 higher-order problems of Benzmueller and Scott's
 ontological-argument dataset, against 1.8.0 under identical conditions:
 
     limit     1.8.0    1.9.0    1.9.0 --cores 4
     10 s       154    166-168        194
-    60 s       171      178
+    60 s       171      178          202
 
 Repeated runs of the same build differ by about two problems, which is why the
 ten-second figure is given as a range.  For scale, on the same problems and the
