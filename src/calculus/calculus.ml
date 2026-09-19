@@ -2222,6 +2222,28 @@ let proj_bindings (hd:term)  (arg_tys:hol_type list) (ty:hol_type) (st:state) =
  output st (fun () -> ("\n\  LEAVE PROJ-BINDING: "));
  result
 
+(*The base types a primitive substitution should guess at.
+
+  The bindings below guess that a formula with a variable head is an equation,
+  or a quantification, and to build such a guess they must name a type.  That
+  type was written as bt_i, the built-in "$i".  A signature starts with $i
+  whether or not the problem uses it, so the guess was always offered and, for
+  any problem that brings its own sorts, could never apply to anything: of the
+  5159 THF problems of TPTP, 2132 declare their own base types and mention $i
+  nowhere, and every problem of the ontological-argument set is one of them.
+  The guess was dead weight there, and the type the problem actually reasons
+  about was never guessed at.
+
+  The types a problem declares are what it reasons about, so those are what is
+  guessed at; a problem that declares none is one that uses $i.  The 205 THF
+  problems that do both lose the $i guess at this level, which is a deliberate
+  trade: adding it back costs a branch on all 2132 of the others, and this rule
+  branches.*)
+let guess_basetypes (st:state) =
+  match problemsupplied_fixed_basetypes st.signature with
+    | [] -> [bt_i]
+    | tys -> tys
+
 let eq_bindings (arg_tys1:hol_type list) (st:state) =
     match arg_tys1 with
       [ty1;ty2] -> 
@@ -2400,22 +2422,28 @@ let prim_subst (cl:cl_clause) (st:state) =
 			 (List.map (fun term -> (xvar,term2xterm term)) (eq_bindings@special_eq_imi_bindings)) in
 
 		       let base_3 () =
-			   [
-			     (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol disjunction) [bt_o;bt_o] bt_o st));
-			     (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol equality) [bt_i;bt_i] bt_o st))
-			   ]
+			   (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol disjunction) [bt_o;bt_o] bt_o st))
+			 :: (List.map
+			       (fun ty ->
+				  (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol equality) [ty;ty] bt_o st)))
+			       (guess_basetypes st))
 			 @ (List.map (fun b -> (term2xterm var,term2xterm b)) (proj_bindings var var_arg_tys var_goal_ty st)) in
 
+		       (*The same seven guesses as before, at each type the problem
+			 declares rather than at $i alone.*)
 		       let base_4 () =
-			     [
-			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol forall) [Funtype(bt_i,bt_o)] bt_o st));
-			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol forall) [Funtype(Funtype(bt_i,bt_o),bt_o)] bt_o st));	
-			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol equality) [Funtype(bt_i,bt_i);Funtype(bt_i,bt_i)] bt_o st));
-			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol equality) [Funtype(bt_i,bt_o);Funtype(bt_i,bt_o)] bt_o st));
-			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (get_defined_symbol st.signature nequals) [bt_i;bt_i] bt_o st));
-			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (get_defined_symbol st.signature nequals) [Funtype(bt_i,bt_i);Funtype(bt_i,bt_i)] bt_o st));	
-			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (get_defined_symbol st.signature nequals) [Funtype(bt_i,bt_o);Funtype(bt_i,bt_o)] bt_o st))
-			     ] in
+			 List.concat_map
+			   (fun ty ->
+			      [
+			        (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol forall) [Funtype(ty,bt_o)] bt_o st));
+			        (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol forall) [Funtype(Funtype(ty,bt_o),bt_o)] bt_o st));
+			        (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol equality) [Funtype(ty,ty);Funtype(ty,ty)] bt_o st));
+			        (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol equality) [Funtype(ty,bt_o);Funtype(ty,bt_o)] bt_o st));
+			        (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (get_defined_symbol st.signature nequals) [ty;ty] bt_o st));
+			        (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (get_defined_symbol st.signature nequals) [Funtype(ty,ty);Funtype(ty,ty)] bt_o st));
+			        (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (get_defined_symbol st.signature nequals) [Funtype(ty,bt_o);Funtype(ty,bt_o)] bt_o st))
+			      ])
+			   (guess_basetypes st) in
 			 match st.flags.prim_subst with
 			     0 -> []
 			   | 1 -> base_1 ()
