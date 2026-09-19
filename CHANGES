@@ -1,5 +1,36 @@
                     THE LEO-II System -- Changes
 
+v1.9.5
+------
+
+1.9.5 is 1.9.4 with three repairs and no change to what the prover proves.
+
+  * LEO-II no longer waits for a first-order prover that never answers.  It
+    read that prover's output to end of file, and it checks its own clock only
+    between inference steps, so a partner which never closes its output stopped
+    the prover dead: "-t 10" then ended the run neither at ten seconds nor at
+    all.  An eprover-ho that does not take the --cpu-limit LEO-II passes does
+    exactly that.  The call now has a deadline of its own -- the limit given to
+    the prover plus five seconds for it to stop by itself -- and the prover is
+    killed when that passes.  A prover that honours its limit never reaches it.
+  * "--proofoutput 2" no longer runs a command that is not there.  It expands
+    the first-order steps with epclextract, and with no epclextract entry in
+    .leoatprc it handed the shell a command line beginning with a space, so the
+    shell reported "--tstp-out: command not found" into the middle of the proof.
+    It says what is missing instead.
+  * Two costs in the term index: the name of a bound variable, which depends on
+    its de Bruijn depth alone, was rebuilt on every retrieval, and the position
+    of a subterm, which is a list and is the key of a hashtable, was hashed
+    three times per subterm instead of once.
+
+Measured at ten seconds on one core: 174 of the 294 problems of the
+ontological-argument dataset, and 343 to 344 of 584 TH0 problems sampled from
+TPTP.  Both are the figures of 1.9.4 within the spread of the measurement,
+which is about two problems on the first set and at least three on the second;
+these repairs are not meant to prove more, and they do not prove less.  0 of
+45 non-theorems, and no contradiction against the record on the 477 TPTP
+problems with countermodels.
+
 v1.9.4
 ------
 
@@ -122,7 +153,10 @@ than an answer.  None do now, and 70 of them are proved.
 Measured over those 584, at ten seconds and on one core:
 
     1.9.4 before these fixes   278
-    1.9.4                      348
+    1.9.4                      343-348
+
+Five runs of that sample over these builds gave 348, 343, 344, 343 and 344, so
+its spread is at least three and a single run of it settles nothing smaller.
 
 The 584 are the TH0 problems among 800 drawn evenly from the TPTP THF
 theorems.  The other 216 are TH1 and the fragments beside it, which LEO-II is
