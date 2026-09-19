@@ -1,11 +1,14 @@
                     THE LEO-II System -- Changes
 
-v1.9.0
+v1.9.4
 ------
 
-1.9.0 proves more than 1.8.0 within the same time limit.  The calculus is
+1.9.4 proves more than 1.8.0 within the same time limit.  The calculus is
 untouched: not one inference was added, removed or changed.  What changed is
-how the time budget is divided and how much work is done and thrown away.
+how the time budget is divided, how much work is done and thrown away, and --
+with --cores, which is what the fourth digit of this version number is about --
+whether the settings that disagree with each other run one after another or
+side by side.
 
 The gain is a net one.  A handful of problems that 1.8.0 proves are lost, as
 always when a search order changes; the figures below are the balance.
@@ -74,7 +77,7 @@ A parallel portfolio, off by default
 Measured over the 294 higher-order problems of Benzmueller and Scott's
 ontological-argument dataset, against 1.8.0 under identical conditions:
 
-    limit     1.8.0    1.9.0    1.9.0 --cores 4
+    limit     1.8.0    1.9.4    1.9.4 --cores 4
     10 s       154    166-168        194
     60 s       171      178          202
 
@@ -86,7 +89,7 @@ the 294 are proved by none of them.
 None of the 45 statements the dataset records as non-theorems is proved at
 either limit, by either version, on one core or on four.
 
-Over 477 TPTP THF problems recorded as having a countermodel, 1.9.0 claims a
+Over 477 TPTP THF problems recorded as having a countermodel, 1.9.4 claims a
 proof of none of them, on one core or on four.  test/tptp_check.py runs that
 check, and --leoargs puts a candidate setting through it before it becomes a
 default.  It is not decoration: the fof_experiment_erased translation proves
