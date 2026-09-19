@@ -475,10 +475,20 @@ let atp_mains =
       Util.try_delete_file file_out_used_leoclauses;
       let result =
         Str.string_match (Str.regexp ".*SZS status Unsatisfiable.*") (eliminate_newlines res_string) 0 in
-      if result && (st.flags.proof_output > 1) then
-	let epclextract = try List.assoc "epclextract" (!atp_cmds) with
-			    Not_found -> ""
-	in
+      (*"--proofoutput 2" reports what the first-order prover contributed, and it
+        reads that out of E's proof with epclextract.  When .leoatprc carries no
+        epclextract entry this was the empty string, and the command handed to
+        the shell began with a space: the shell reported "--tstp-out: command
+        not found" into the middle of the proof output, and the reader was left
+        to guess what was missing.  Without the tool there is nothing to read
+        out, so say that once and give what "--proofoutput 1" gives.*)
+      let epclextract =
+        try List.assoc "epclextract" (!atp_cmds) with Not_found -> "" in
+      if result && (st.flags.proof_output > 1) && epclextract = "" then
+        Util.sysoutf 0
+          (fun () -> ("\n% No epclextract configured, so the first-order steps are not " ^
+                      "expanded; add an epclextract entry to .leoatprc for that.\n"));
+      if result && (st.flags.proof_output > 1) && epclextract <> "" then
 	let res_string_extract =
           let (inchan, outchan) = Unix.open_process (epclextract ^ " --tstp-out --forward-comments") in
           let rev_content : string list ref = ref [] in
