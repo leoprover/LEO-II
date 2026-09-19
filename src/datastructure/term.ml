@@ -137,9 +137,14 @@ let rec get_head_symbol = function
 (** pretty printer. This is not very sophisticated -- "to_hotptp"*)
 let rec to_string = function
     Symbol s -> s
+  (*Print the connective that is there.  This printed every one of them as
+    "=", so a conjunction, a disjunction, an implication and an equation were
+    indistinguishable in every trace the prover writes -- which is worth more
+    than the two characters it saved, since a trace is read exactly when a
+    term is suspected of being wrong.*)
   | Appl(Appl(Symbol s,t1),t2)
      when s = "=" || s = "|" || s = "&" || s = "=>" || s = "<=>" || s = "<=" ->
-      "(" ^ add_pars t1 ^ " = " ^ add_pars t2 ^ ")"
+      "(" ^ add_pars t1 ^ " " ^ s ^ " " ^ add_pars t2 ^ ")"
   | Appl(t1,t2) -> add_pars t1 ^ " " ^ add_pars t2
   | Abstr(x,ty,t) -> "^ [" ^ to_string x ^ ":" ^ Hol_type.to_string ty ^ "]: "^(to_string t)
 and add_pars t =

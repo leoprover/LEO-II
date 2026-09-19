@@ -132,9 +132,18 @@ let rec type_to_term (ty : hol_type) = match ty with
       let n' =
         if ty = Signature.bt_i then proxy_indK
         else if ty = Signature.bt_o then proxy_boolK
-        (*type variables were probably put there by us*)
-        else if is_variable n then n
-        else if Hol_type.is_polyvar ty then remove_prefix "1" n
+        (*A type is encoded as a term and that term is printed into a
+          first-order problem, where a name beginning with a capital letter is
+          a variable.  These two branches printed exactly that: a polymorphic
+          type variable "'A" lost its quote here and came out as "A", and the
+          first-order prover then rejected the whole problem with "Formula has
+          free variables".  The call was spent and its answer lost, silently.
+          LEO-II's own "!=" carries a polymorphic type, so every primitive
+          substitution level that offers it produced such a problem -- which is
+          why those levels never worked.  A type is a constant; it is prefixed
+          like every other type name.*)
+        else if is_variable n then prefix_type ^ n
+        else if Hol_type.is_polyvar ty then prefix_type ^ remove_prefix "1" n
         else prefix_type ^ n
       in Symbol n'
   | Funtype (ty1, ty2) ->
