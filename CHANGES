@@ -74,17 +74,38 @@ A parallel portfolio, off by default
     ran out of time.  A first-order prover left behind by a killed branch stops
     on its own CPU limit instead.
 
+Costs that grew with what had already been proved
+
+  * A term is stored as an index and an int, and two terms in one index are
+    equal exactly when the ints are.  The hot paths compared them with the
+    structural "=", which walks the whole term base before reaching the ints,
+    and walks it in full even when the terms plainly differ.  Every comparison
+    therefore cost the size of everything proved so far.  literal.mli already
+    declared lit_term_equal for this and literal.ml defined it as a failure,
+    so the call sites used "=" instead; it is implemented now and used in the
+    three places sampling found: Termsystem.get_id, subsumption, and the first
+    guard of the pre-unification match, which runs once per unification
+    literal per step of the recursion.
+  * Primitive substitution built all four levels of bindings and then read the
+    flag deciding which to return, so "--primsubst 0" produced an empty list at
+    full price.  Each level is a function now.  The costly one walks the whole
+    signature, which grows with every Skolem constant.
+  * Every fresh variable and every Skolem constant refolded the entire
+    signature into a new list to keep a table that only the term orders read,
+    and the default order reads nothing.  One new symbol adds one entry now.
+
+These change what the prover spends, never what it answers.
+
 Measured over the 294 higher-order problems of Benzmueller and Scott's
 ontological-argument dataset, against 1.8.0 under identical conditions:
 
     limit     1.8.0    1.9.4    1.9.4 --cores 4
-    10 s       154    166-168        194
-    60 s       171      178          202
+    10 s       154      175          197
+    60 s       171      186          210
 
-Repeated runs of the same build differ by about two problems, which is why the
-ten-second figure is given as a range.  For scale, on the same problems and the
-same limit of ten seconds, Vampire proves 173, Leo-III 158, and E 209; 71 of
-the 294 are proved by none of them.
+Repeated runs of the same build differ by about two problems.  For scale, on
+the same problems and the same limit of ten seconds, Vampire proves 173,
+Leo-III 158, and E 209.
 
 None of the 45 statements the dataset records as non-theorems is proved at
 either limit, by either version, on one core or on four.
