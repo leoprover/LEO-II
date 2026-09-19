@@ -632,6 +632,7 @@ thf_unary_formula : /* Term.term */
      this, at the '?' or the '!'.  Adding the rule leaves the conflict counts
      of this grammar where they were. */
   | TILDE thf_quantified_formula { Appl(Symbol(Signature.neg),$2) }
+  | TILDE TILDE thf_unitary_formula { Appl(Symbol(Signature.neg),Appl(Symbol(Signature.neg),$3)) }
   | quantifier_comb thf_logic_formula { Appl($1, $2) }
   | quantifier_comb AT_SIGN thf_logic_formula { Appl($1, $3) }
 ;

@@ -203,10 +203,14 @@ let copy_signature sigma = {
 
 let is_basetype_in sigma s = List.mem (basetype s) sigma.basetypes
 
+(*Declaring a base type twice is not an error.  A base type is its name and
+  nothing else, so the second declaration says what the first said; TPTP
+  problems restate the types of the axiom files they include, and LEO-II
+  refused to read them.  add_type_var, just below, has always been silent
+  about the same thing.*)
 let add_basetype sigma name = (* FIXME: use hashtable *)
   if not (is_basetype_in sigma name) then
     sigma.basetypes <- basetype name :: sigma.basetypes
-  else failwith ("Type " ^ name ^ " is already declared in signature")
 
 let add_type_var sigma name =
 	if not (List.mem name sigma.typevars) (* FIXME: use hashtable *)

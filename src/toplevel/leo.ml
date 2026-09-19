@@ -784,6 +784,13 @@ let leo_main () =
     (*register signal handlers*)
     begin
       try
+        (*A first-order prover that rejects its input exits at once, and the
+          write that is still in flight then raises SIGPIPE, whose default is
+          to kill the process.  LEO-II died there without printing an SZS
+          status at all, so a caller saw it vanish rather than fail.  Ignored,
+          the write fails as an ordinary error and the run ends with a status
+          like any other.*)
+        ignore(Sys.signal Sys.sigpipe Sys.Signal_ignore);
         ignore(Sys.signal Sys.sigquit
                  (Sys.Signal_handle
                     (fun _ ->
