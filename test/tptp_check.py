@@ -4,7 +4,7 @@ the recorded status.
 
 Usage: test/tptp_check.py --tptp ~/tmp/tptp/TPTP-v9.2.1 [--set unsound|all|theorems]
                          [--timeout 10] [--jobs 4] [--atp <eprover>] [--out FILE]
-                         [--leoargs "<flags passed on to LEO-II>"]
+                         [--leoargs "<flags passed on to LEO-II>"] [--th0]
 
 Every TPTP problem records what is known about it.  An answer that contradicts
 that record is a bug, and the two directions are not equally interesting: a
@@ -24,6 +24,18 @@ STATUS = re.compile(r'^% Status\s*:\s*(\w+)', re.M)
 PROVED = {'Theorem', 'Unsatisfiable', 'ContradictoryAxioms'}
 REFUTED = {'CounterSatisfiable', 'Satisfiable'}
 LOCK = threading.Lock()
+
+
+SPC = re.compile(r'^% SPC\s*:\s*(\w+)', re.M)
+
+
+def fragment(path):
+    """The logic the problem is written in, from its SPC header: TH0, TH1, ..."""
+    try:
+        m = SPC.search(open(path, encoding='utf-8', errors='replace').read(8192))
+    except OSError:
+        return None
+    return m.group(1).split('_')[0] if m else None
 
 
 def expected(path):
@@ -91,6 +103,12 @@ def main():
     ap.add_argument('--leoargs', default='')
     ap.add_argument('--sample', type=int, default=0,
                     help='keep every k-th problem so that N remain, spread over all domains')
+    # LEO-II is a TH0 prover.  Measuring it on TH1 measures that it says so, which
+    # it does at once and for every such problem, and which drowns the figure the
+    # run is after: of 800 problems drawn across the library about 216 are outside
+    # TH0 and error in every run, whatever is being compared.
+    ap.add_argument('--th0', action='store_true',
+                    help='keep only problems whose SPC header says TH0')
     a = ap.parse_args()
     leoargs = a.leoargs.split()
 
@@ -100,6 +118,8 @@ def main():
         problems = [p for p in problems if expected(p) in REFUTED]
     elif a.set == 'theorems':
         problems = [p for p in problems if expected(p) in PROVED]
+    if a.th0:
+        problems = [p for p in problems if fragment(p) == 'TH0']
     if a.limit:
         problems = problems[:a.limit]
     if a.sample and a.sample < len(problems):
