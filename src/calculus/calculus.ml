@@ -2375,32 +2375,38 @@ let prim_subst (cl:cl_clause) (st:state) =
 		     assert flag;
 		     let prim_subst_pairs = 
 
-		       let base_1 =			 
+		       (*As in prim_subst_pairs: each level builds only what it
+			 returns.  These were let bindings, so every level was
+			 built before the flag was read and then discarded if
+			 unused.  The second level walks the whole signature,
+			 which grows with every Skolem constant.*)
+		       let base_1 () =
 			   [
 			     (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol ctrue) [] bt_o st));
 			     (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol cfalse) [] bt_o st));
 			     (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol neg) [bt_o] bt_o st))
                            ] in
 
-		       let eq_bindings = (eq_bindings var_arg_tys st) in
-		       let special_eq_imi_bindings =  
-			 (List.flatten 
-			    (List.map (fun (string,tp) -> 
-					 (special_eq_imi_binding var_arg_tys (Symbol string) st)) 
-			       (List.filter (fun (str,tp) -> 
-					       (not (Term.is_variable (Symbol str)))) 
-				  (all_uninterpreted_symbols st.signature)))) in
-		       let base_2 = 
+		       let base_2 () =
+		         let eq_bindings = (eq_bindings var_arg_tys st) in
+		         let special_eq_imi_bindings =
+			   (List.flatten
+			      (List.map (fun (string,tp) ->
+					   (special_eq_imi_binding var_arg_tys (Symbol string) st))
+			         (List.filter (fun (str,tp) ->
+					         (not (Term.is_variable (Symbol str))))
+				    (all_uninterpreted_symbols st.signature))))
+			 in
 			 (List.map (fun term -> (xvar,term2xterm term)) (eq_bindings@special_eq_imi_bindings)) in
-				      
-		       let base_3 =
+
+		       let base_3 () =
 			   [
 			     (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol disjunction) [bt_o;bt_o] bt_o st));
 			     (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol equality) [bt_i;bt_i] bt_o st))
 			   ]
 			 @ (List.map (fun b -> (term2xterm var,term2xterm b)) (proj_bindings var var_arg_tys var_goal_ty st)) in
 
-		       let base_4 =
+		       let base_4 () =
 			     [
 			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol forall) [Funtype(bt_i,bt_o)] bt_o st));
 			       (xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol forall) [Funtype(Funtype(bt_i,bt_o),bt_o)] bt_o st));	
@@ -2412,11 +2418,11 @@ let prim_subst (cl:cl_clause) (st:state) =
 			     ] in
 			 match st.flags.prim_subst with
 			     0 -> []
-			   | 1 -> base_1
-			   | 2 -> base_1@base_2
-			   | 3 -> base_1@base_2@base_3
-			   | 4 -> base_1@base_2@base_3@base_4
-			   | _ -> base_1@base_2@base_3@base_4
+			   | 1 -> base_1 ()
+			   | 2 -> base_1 ()@base_2 ()
+			   | 3 -> base_1 ()@base_2 ()@base_3 ()
+			   | 4 -> base_1 ()@base_2 ()@base_3 ()@base_4 ()
+			   | _ -> base_1 ()@base_2 ()@base_3 ()@base_4 ()
 		     in
 		       Util.sysoutf 0 (fun () -> ("\n Prim_subst applied to clause \n "^(cl_clause_to_string cl)));
 		       (List.iter (fun (xvar,xterm) -> Util.sysoutf 3 (fun () -> ("\n "^(to_string xvar)^" <- "^(to_string xterm)))) prim_subst_pairs);
@@ -4176,37 +4182,43 @@ let prim_subst_pairs (var:term) (st:state) =
     Util.sysoutf 3 (fun () -> ("\n "^(Term.to_string var)^": "^(Hol_type.to_string var_ty)));
     Util.sysout 3 "\n var_arg_tys: ";
     List.iter (fun x -> (Util.sysout 3 ((Hol_type.to_string x)^" "))) var_arg_tys;
-    let base_1 =			 
+    (*Each level builds only what it returns.  These were ordinary let
+      bindings, so every level was built before the flag below was read and
+      the unused ones were then discarded -- "--primsubst 0" paid in full for
+      an empty result.  The third level is the expensive one: it walks every
+      uninterpreted symbol of the signature, and the signature grows with
+      every Skolem constant the search introduces, so on a problem that
+      introduces many this dominated everything else.*)
+    let base_1 () =
       [
 	(xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol ctrue) [] bt_o st));
 	(xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol cfalse) [] bt_o st));
 	(xvar,term2xterm (imi_binding var var_arg_tys var_goal_ty (Symbol neg) [bt_o] bt_o st))
       ] in
-      
-    let eq_bindings = (eq_bindings var_arg_tys st) in
-    let special_eq_imi_bindings =  
-      (List.flatten 
-	 (List.map (fun (string,tp) -> 
-		      (special_eq_imi_binding var_arg_tys (Symbol string) st)) 
-	    (List.filter (fun (str,tp) -> 
-			    (not (Term.is_variable (Symbol str)))) 
-	       (all_uninterpreted_symbols st.signature)))) in
-    let base_2 = 
-      (List.map (fun term -> (xvar,term2xterm term)) eq_bindings) in
-      
-    let base_3 = 
-      (List.map (fun term -> (xvar,term2xterm term)) special_eq_imi_bindings) in
-      
-    let base_4 = [] in
+
+    let base_2 () =
+      List.map (fun term -> (xvar,term2xterm term)) (eq_bindings var_arg_tys st) in
+
+    let base_3 () =
+      let special_eq_imi_bindings =
+        (List.flatten
+	   (List.map (fun (string,tp) ->
+		        (special_eq_imi_binding var_arg_tys (Symbol string) st))
+	      (List.filter (fun (str,tp) ->
+			      (not (Term.is_variable (Symbol str))))
+	         (all_uninterpreted_symbols st.signature))))
+      in List.map (fun term -> (xvar,term2xterm term)) special_eq_imi_bindings in
+
+    let base_4 () = [] in
 
     let result =
       match st.flags.prim_subst with
 	  0 -> []
-	| 1 -> base_1
-	| 2 -> base_1@base_2
-	| 3 -> base_1@base_2@base_3
-	| 4 -> base_1@base_2@base_3@base_4
-	| _ -> base_1@base_2@base_3@base_4 
+	| 1 -> base_1 ()
+	| 2 -> base_1 ()@base_2 ()
+	| 3 -> base_1 ()@base_2 ()@base_3 ()
+	| 4 -> base_1 ()@base_2 ()@base_3 ()@base_4 ()
+	| _ -> base_1 ()@base_2 ()@base_3 ()@base_4 ()
 
     in
       result
