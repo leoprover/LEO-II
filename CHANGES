@@ -96,12 +96,47 @@ Costs that grew with what had already been proved
 
 These change what the prover spends, never what it answers.
 
+Problems LEO-II could not read at all
+
+  * "~ ? [X] : F" and "~ ! [X] : F".  The grammar took "~ (F)" and, since
+    1.8.0, "~ P", but not a negated quantification, which is ordinary THF and
+    which the library is full of.
+  * "~ ~ F".  Its own production, because "~" is itself an atom and "~ ~" was
+    taken by the rule above.
+  * A base type declared twice.  TPTP problems restate the types of the axiom
+    files they include; LEO-II refused them.  A base type is its name and
+    nothing else, so the second declaration says what the first said.
+  * A type printed as a variable.  type_to_term encoded a polymorphic type as
+    a bare capital letter, which in a first-order problem is a variable, and
+    the first-order prover rejected the whole problem with "Formula has free
+    variables" -- silently, the call spent and its answer lost.  LEO-II's own
+    "!=" carries such a type, which is why the primitive substitution levels
+    that offer it never worked.
+  * SIGPIPE.  A first-order prover that rejects its input exits at once, and
+    the write still in flight killed LEO-II outright: no status, no exit code
+    of its own, a prover that vanished rather than failed.
+
+Of 584 TH0 problems sampled evenly across TPTP, 197 ended in an error rather
+than an answer.  None do now, and 70 of them are proved.
+
+Measured over 800 problems sampled evenly across the TPTP THF theorems, at ten
+seconds and on one core:
+
+    1.9.4 before these fixes   278
+    1.9.4                      348
+
+TH1 and the other fragments outside TH0 are not counted as failures above:
+LEO-II is a TH0 prover and does not read them.
+
 Measured over the 294 higher-order problems of Benzmueller and Scott's
 ontological-argument dataset, against 1.8.0 under identical conditions:
 
     limit     1.8.0    1.9.4    1.9.4 --cores 4
     10 s       154      175          197
     60 s       171      186          210
+
+The four-core figures are what four cores buy; E, Vampire and Leo-III are
+measured on one core, so the one-core column is what compares with them.
 
 Repeated runs of the same build differ by about two problems.  For scale, on
 the same problems and the same limit of ten seconds, Vampire proves 173,
