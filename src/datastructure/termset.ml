@@ -252,6 +252,21 @@ let rec replace_node ts id id' =
 
 let nstruct idx id = (get_node idx.termbase id).structure
 
+(*The name of a bound variable is a function of its de Bruijn depth alone, so
+  it is the same string every time a term is retrieved.  Building it again on
+  every retrieval, of which there is one per conversion out of the index, was
+  11% of the run on a problem whose terms are large.  They are built once.*)
+let sx_names = ref (Array.init 64 (fun i -> "SX" ^ string_of_int i))
+
+let sx d =
+  if d < 0 then "SX" ^ string_of_int d
+  else
+    begin
+      if d >= Array.length !sx_names then
+        sx_names := Array.init (2 * (d + 1)) (fun i -> "SX" ^ string_of_int i);
+      !sx_names.(d)
+    end
+
 let rec retrieve' ts id d bound =
   if (node_exists ts id) then
   match (da_get ts.nodes id).structure with
@@ -259,13 +274,13 @@ let rec retrieve' ts id d bound =
   | Appl_node (id1,id2) -> Appl(retrieve' ts id1 d bound, retrieve' ts id2 d bound)
   | Abstr_node (ty,id1) ->
           (* deBruijn -> varname may be done by custom function *)
-          let var_name = "SX" ^ (string_of_int (d+1)) in
+          let var_name = sx (d+1) in
           Abstr(Symbol var_name, ty, retrieve' ts id1 (d+1) ((d+1,var_name)::bound))
   | Bound_node (_,idx) ->
  (*         assert(mem_assoc idx bound);*)
           if mem_assoc idx bound then
           Symbol(assoc (d-idx) bound)
-          else Symbol("SX"^(string_of_int (((List.length bound)-idx)-1)))
+          else Symbol(sx (((List.length bound)-idx)-1))
   else raise Not_found
 
 let retrieve ts id = retrieve' ts id (-1) []
@@ -831,14 +846,19 @@ let insert_and_index idx nodestruct =
   id
 
 
+(*One lookup per table, not three.  The position is a list, one element per
+  step into the term, and it is the key of term_at_pos_role: hashing it costs
+  its length, and it was hashed three times per subterm -- mem, find, and the
+  find inside the replace.  Same answers, one hash.*)
 let rec index_role_subterms idx id root role pos =
-  if (not (Hashtbl.mem idx.term_at_pos_role pos)) then Hashtbl.add idx.term_at_pos_role pos (Hashtbl.create 3);
-  let id2root = Hashtbl.find idx.term_at_pos_role pos in
-  let newrootset = if (Hashtbl.mem id2root id) then IdSet.add root (Hashtbl.find id2root id)
-                   else IdSet.singleton root in
-  Hashtbl.replace (Hashtbl.find idx.term_at_pos_role pos) id newrootset;
-  Hashtbl.replace idx.occurs_in_role id (if (Hashtbl.mem idx.occurs_in_role id) then IdSet.add root (Hashtbl.find idx.occurs_in_role id)
-                   else IdSet.singleton root);
+  let id2root =
+    match Hashtbl.find_opt idx.term_at_pos_role pos with
+      | Some h -> h
+      | None -> let h = Hashtbl.create 3 in Hashtbl.add idx.term_at_pos_role pos h; h in
+  let cur = match Hashtbl.find_opt id2root id with Some s -> s | None -> IdSet.empty in
+  Hashtbl.replace id2root id (IdSet.add root cur);
+  let occ = match Hashtbl.find_opt idx.occurs_in_role id with Some s -> s | None -> IdSet.empty in
+  Hashtbl.replace idx.occurs_in_role id (IdSet.add root occ);
   (* print_string ((string_of_int id)^" occurs in "^(string_of_int root)^"\n"); *)
   match  nstruct idx id with
     Appl_node (id1,id2) -> (index_role_subterms idx id1 root role (pos@[Function]);
@@ -853,13 +873,13 @@ let set_role idx id r =
   index_role_subterms idx id id r []
 
 
+(*As in index_role_subterms: one hash of the position, not three.*)
 let rec unindex_role_subterms idx id root role pos =
   let id2root = Hashtbl.find idx.term_at_pos_role pos in
-  let newrootset = if (Hashtbl.mem id2root id) then IdSet.remove root (Hashtbl.find id2root id)
-                   else IdSet.empty in
-  Hashtbl.replace (Hashtbl.find idx.term_at_pos_role pos) id newrootset;
-  Hashtbl.replace idx.occurs_in_role id (if (Hashtbl.mem idx.occurs_in_role id) then IdSet.remove root (Hashtbl.find idx.occurs_in_role id)
-                   else IdSet.empty);
+  let cur = match Hashtbl.find_opt id2root id with Some s -> s | None -> IdSet.empty in
+  Hashtbl.replace id2root id (IdSet.remove root cur);
+  let occ = match Hashtbl.find_opt idx.occurs_in_role id with Some s -> s | None -> IdSet.empty in
+  Hashtbl.replace idx.occurs_in_role id (IdSet.remove root occ);
   (* print_string ((string_of_int id)^" occurs in "^(string_of_int root)^"\n"); *)
   match  nstruct idx id with
     Appl_node (id1,id2) -> (unindex_role_subterms idx id1 root role (pos@[Function]);

@@ -447,22 +447,69 @@ let atp_mains =
       (*FIXME replacing "ignore(Util.waitfor_spawn call_string);"
               with Sys.command below, due to issues on MacOSX*)
       if Build_config.debug then Util.sysoutf 1 (fun () -> ("\n**Sent to E**\n" ^ fo_clauses ^ "**(End of input to E)**\n"));
+      (*Read under a deadline of our own.
+
+        This read to end of file.  A first-order prover that never closes its
+        output therefore never gave LEO-II control back, and LEO-II checks its
+        own clock only between inference steps: with such a partner "-t 10"
+        did not end the run at ten seconds, or at all.  That is not a
+        hypothetical -- it is what an eprover-ho that does not take the
+        --cpu-limit we pass does to us.
+
+        The prover is started through a shell with exec, so that the pid we
+        hold is the prover itself and not a shell above it, and it is killed
+        when the deadline passes.  The deadline is the limit we gave it plus a
+        few seconds for it to stop by itself; a prover that honours the limit
+        never reaches it.*)
       let res_string =
-        let (inchan, outchan) = Unix.open_process call_string in
-        let rev_content : string list ref = ref [] in
-        let read_all () =
-          try
-            while true do
-              rev_content := input_line inchan :: !rev_content
-            done
-          with
-              End_of_file -> ()
+        (*close-on-exec, or the child inherits the ends it must not hold: with
+          the write end of its own input pipe still open in the child, closing
+          ours never gives it end of file, and a first-order prover that is
+          waiting for more input never answers.  create_process dups the two
+          ends it is given onto 0 and 1, and a dup clears the flag, so the
+          child keeps exactly the two it needs.*)
+        let (r_out, w_out) = Unix.pipe ~cloexec:true ()
+        and (r_in, w_in) = Unix.pipe ~cloexec:true () in
+        let pid =
+          Unix.create_process "/bin/sh" [| "/bin/sh"; "-c"; "exec " ^ call_string |]
+            r_in w_out Unix.stderr in
+        Unix.close r_in; Unix.close w_out;
+        let outchan = Unix.out_channel_of_descr w_in in
+        let deadline =
+          Unix.gettimeofday () +. float_of_int (st.flags.atp_timeout + 5) in
+        let timed_out = ref false in
+        let out = Buffer.create 65536 in
+        (*Raw reads, not a buffered channel.  select answers about the file
+          descriptor and input_line about the channel's buffer, and mixing the
+          two loses: the rest of an answer sits in the buffer while select says
+          nothing has arrived, so the read waits out the deadline and the
+          answer is thrown away.  Everything here wants the whole output as one
+          string in any case.*)
+        let buf = Bytes.create 65536 in
+        let rec drain () =
+          let left = deadline -. Unix.gettimeofday () in
+            if left <= 0.0 then timed_out := true
+            else
+              match Unix.select [r_out] [] [] left with
+                | ([], _, _) -> timed_out := true
+                | _ ->
+                    let n = try Unix.read r_out buf 0 65536 with Unix.Unix_error _ -> 0 in
+                      if n > 0 then (Buffer.add_subbytes out buf 0 n; drain ())
         in
-          output_string outchan fo_clauses;
+          (try output_string outchan fo_clauses with Sys_error _ -> ());
           close_out_noerr outchan;
-          read_all ();
-          ignore(Unix.close_process (inchan, outchan));
-          String.concat "\n" (List.rev !rev_content) ^ "\n"
+          drain ();
+          if !timed_out then
+            begin
+              Util.sysoutf 1
+                (fun () -> ("\n% The first-order prover did not answer within " ^
+                            string_of_int (st.flags.atp_timeout + 5) ^
+                            "s and was stopped.\n"));
+              (try Unix.kill pid Sys.sigkill with Unix.Unix_error _ -> ())
+            end;
+          (try Unix.close r_out with Unix.Unix_error _ -> ());
+          (try ignore (Unix.waitpid [] pid) with Unix.Unix_error _ -> ());
+          Buffer.contents out
       in
       if Build_config.debug then
         begin
