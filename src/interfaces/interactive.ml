@@ -2023,6 +2023,19 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
 	 let (termlist,sigma,termroles) = parse_thf_file file_name in
            (try
               start_timeout ();
+	      (*Give this problem the budget.  Nothing else does in directory
+	        mode: the schedule the main loop checks against is the one
+	        leo.ml builds for a single problem, and here it was left at its
+	        initial duration of zero, so check_timeout fired before the
+	        search had begun and every problem came back unproved in 0.0
+	        seconds.  One slice, the whole of -t, per problem.*)
+	      State.problem_cumulative_time := 0.0;
+	      State.problem_overshot := 0.0;
+	      State.child_time := 0.0;
+	      State.current_schedule :=
+	        {State.duration = float_of_int !original_timeout; State.strategy = []};
+	      State.schedule_start :=
+	        Unix.gettimeofday () +. float_of_int !original_timeout;
 	      let _ = init_problem termlist sigma termroles ("file",file_name) st in
 		Util.start_timer file_name;
 		let _ = prove_with_fo_atp st prover in

@@ -85,6 +85,11 @@ Running LEO-II in Automatic Mode:
    [installation-directory]/leo2/bin/leo [installation-directory]/leo2/examples/extensionality.p --proofoutput 1
    [installation-directory]/leo2/bin/leo [installation-directory]/leo2/examples/sets.p
 
+   A whole directory at once, each problem with its own time limit.  This
+   writes a summary table into the directory, so it needs write permission
+   there:
+   [installation-directory]/leo2/bin/leo -d [installation-directory]/leo2/examples -f e -t 40
+
    At CASC LEO-II is called as follows:
    [installation-directory]/leo2/bin/leo --timeout 30 --proofoutput 1 --foatp e \
      --atp e=[e-directory]/eprover '[problem-file-directory/SET014^4.tptp'
@@ -96,7 +101,3 @@ Running several settings at once:
   parallel and the search is exactly what it has always been.
 
 Running LEO-II in Interactive Mode is not currently recommended due to several open issues.
-
-The same holds for directory mode ("-d"): it writes its summary table, but it
-does not give each problem a time budget, so it reports every problem as
-unproved.  Run problems one at a time.
