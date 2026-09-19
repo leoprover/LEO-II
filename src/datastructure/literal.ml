@@ -17,9 +17,19 @@ let lit_weight_to_string (lw:lit_weight) = (string_of_int lw)
 
 let testcount = ref 0
 
-(* delete again later *)
-let rec lit_term_equal lt1 lt2 =
-  failwith "lit_term_equal not implemented yet!"
+(*Equality on the terms of literals.  This was declared in the interface and
+  left as a failure, so every call site compares with the structural "=" --
+  and that is a trap here.  An indexed term is a pair of the whole term index
+  and an int, and the structural comparison walks the index before it ever
+  looks at the int.  Two terms in one index are equal exactly when their ids
+  are, which is what indexing them was for.  The index is compared only when
+  the ids already agree, and then by identity first, so the answer is the same
+  as before in every case.*)
+let lit_term_equal (lt1 : 'a xterm) (lt2 : 'a xterm) =
+  match lt1, lt2 with
+    | Indexed (i1, id1), Indexed (i2, id2) -> id1 = id2 && (i1 == i2 || i1 = i2)
+    | Explicit t1, Explicit t2 -> t1 = t2
+    | _ -> false
 
 let lit_term_to_string (lt:'a xterm) =
   to_hotptp lt

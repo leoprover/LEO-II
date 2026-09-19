@@ -1115,7 +1115,7 @@ let standard_extcnf (c:cl_clause) (st:state) =
 	then 
 	  let term = xterm2term l.lit_term in
 	  let new_term = term2xterm (standard_extcnf_term term st) in 
-	    if new_term = l.lit_term then [c] else 
+	    if lit_term_equal new_term l.lit_term then [c] else 
 	      let new_lit = lit_mk_pos_literal st.signature new_term
 	      in 
 		[mk_clause [new_lit] (inc_clause_count st) 
@@ -1852,7 +1852,7 @@ let simplify (cl:cl_clause) (st:state) =
   if !tautology then []
   else 
     let (poslits,neglits) = List.partition  (fun l -> l.lit_polarity) (Array.to_list cl.cl_litarray) in
-    if List.exists (fun l1 -> List.exists (fun l2 -> l1.lit_term = l2.lit_term) neglits) poslits 
+    if List.exists (fun l1 -> List.exists (fun l2 -> lit_term_equal l1.lit_term l2.lit_term) neglits) poslits 
     then []
     else 
       let (flag2,newlits2) = faclits !newlits false [] in
@@ -3599,7 +3599,14 @@ let rec pre_uni_new2
             in
               assert (xl_ty = xr_ty);
               match (l, r, xl_ty, flag_ext, decFuncProcessed) with
-                  (_, _, _, _, _) when xl = xr -> (* triv *)
+                  (*The trivial case is the first guard of this match, so it
+                    is tested for every unification literal at every step of
+                    the recursion.  Comparing two indexed terms with "=" walks
+                    the whole term index before it reaches the two ids, which
+                    made this test, and with it the whole unification search,
+                    grow with the size of the term base rather than with the
+                    terms being unified.*)
+                  (_, _, _, _, _) when lit_term_equal xl xr -> (* triv *)
                     let cl' = create_intermediate_uni_step "_triv" flexlits (otherlits @ restlits) subst st cl
                     in 
                       pre_uni_new2 restlits flexlits otherlits subst st depth flag_ext (changes + 1) cl'
@@ -3865,7 +3872,8 @@ let triv_subsumes (cl1 : cl_clause) (cl2 : cl_clause) =
       (List.for_all
          (fun l1 ->
             List.exists
-              (fun l2 -> l1.lit_polarity = l2.lit_polarity && l1.lit_term = l2.lit_term)
+              (fun l2 -> l1.lit_polarity = l2.lit_polarity
+                          && lit_term_equal l1.lit_term l2.lit_term)
               litlist2)
          litlist1)
   in

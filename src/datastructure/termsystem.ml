@@ -90,7 +90,10 @@ let mk_abs tvar htype tbody =
        let idabs = insert_and_index idx (Abstr_node(htype,idbody)) in
        Indexed(idx,idabs)
    | (Indexed(idx,_),Indexed(idx',idbody)) ->
-       if idx=idx' then
+       (*Physical equality first; see the note at get_id.  The structural test
+         is kept as a fallback here because the alternative is failure, not a
+         slower correct answer.*)
+       if idx==idx' || idx=idx' then
          let idabs = insert_and_index idx (Abstr_node(htype,idbody)) in
          Indexed(idx,idabs)
        else failwith "mk_abs: indices do not match"
@@ -109,7 +112,8 @@ let mk_appl t1 t2 =
 	let idappl = insert_and_index idx (Appl_node(idt1,idt2)) in
 	Indexed(idx,idappl)
    | (Indexed(idx,idt1),Indexed(idx',idt2)) ->
-        if idx=idx' then
+        (*Physical equality first; see the note at get_id.*)
+        if idx==idx' || idx=idx' then
 	  let idappl = insert_and_index idx (Appl_node(idt1,idt2)) in
 	  Indexed(idx,idappl)
 	else failwith "mk_appl: indices do not match"
@@ -189,19 +193,29 @@ let is_indexed = function
     Explicit _ -> false
   | Indexed _  -> true
 
+(*Physical equality, not structural.  An index holds the whole term base, so
+  "idx = idx'" walks every term ever created, on every call.  Leo-II uses one
+  index, so the two are the same object and == answers in constant time.  The
+  branch below is a correct answer for a different index either way: it
+  retrieves the term and indexes it here, which is what the id means.*)
 let index idx = function
     Explicit t -> Indexed(idx, Termset.index_term t idx)
   | Indexed(idx',id) ->
-      if idx=idx' then
+      if idx==idx' then
         Indexed(idx,id)
       else (* Do we want this? *)
         let t = Termset.retrieve idx'.Termset.termbase id in
 	Indexed(idx, Termset.index_term t idx)
 
+(*Physical equality, not structural.  An index holds the whole term base, so
+  "idx = idx'" walks every term ever created, on every call.  Leo-II uses one
+  index, so the two are the same object and == answers in constant time.  The
+  branch below is a correct answer for a different index either way: it
+  retrieves the term and indexes it here, which is what the id means.*)
 let index_with_role idx t r = match t with
     Explicit t -> Indexed(idx, Termset.index_with_role idx t r)
   | Indexed(idx',id) ->
-      if idx=idx' then
+      if idx==idx' then
         (Termset.set_role idx id r;
          Indexed(idx,id))
       else (* Do we want this? *)
@@ -236,10 +250,15 @@ let to_post = function
     Explicit t -> Term.to_post t
   | Indexed(idx,id) -> Term.to_post (Termset.retrieve idx.termbase id)
 
+(*Physical equality, not structural.  An index holds the whole term base, so
+  "idx = idx'" walks every term ever created, on every call.  Leo-II uses one
+  index, so the two are the same object and == answers in constant time.  The
+  branch below is a correct answer for a different index either way: it
+  retrieves the term and indexes it here, which is what the id means.*)
 let get_id idx = function
     Explicit t -> Termset.index_term t idx
   | Indexed(idx',id) ->
-      if idx=idx' then
+      if idx==idx' then
         id
       else (* Do we want this? *)
         let t = Termset.retrieve idx'.Termset.termbase id in
