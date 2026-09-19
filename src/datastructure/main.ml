@@ -206,7 +206,13 @@ let rec create_and_insert_new_free_var_with_simple_name (ty:hol_type) (st:state)
   else
     (
      add_uninterpreted_symbol st.signature newsym ty;
-     Orderings.symbol_typings := Signature.all_uninterpreted_symbols st.signature; (*FIXME hack -- might be better to store such info in state*)
+     (*One new symbol, one new entry.  This used to refold the whole signature
+       into a fresh list on every fresh variable and every Skolem constant, so
+       introducing n symbols allocated on the order of n^2 list cells.  The
+       branch above has just established that newsym is in neither table, so
+       prepending cannot duplicate a key; the two readers of this table sort
+       it or look up by key, and neither depends on the order.*)
+     Orderings.symbol_typings := (newsym, ty) :: !Orderings.symbol_typings;
      Symbol newsym
     )
 
@@ -239,7 +245,8 @@ let rec create_and_insert_skolem_const (t:term) (ty:hol_type) (st:state) =
       else 
 	(
 	 add_uninterpreted_symbol st.signature newsym ty;
-   Orderings.symbol_typings := Signature.all_uninterpreted_symbols st.signature; (*FIXME hack -- might be better to store such info in state*)
+	 (*One new symbol, one new entry; see create_and_insert_new_free_var_with_simple_name.*)
+	 Orderings.symbol_typings := (newsym, ty) :: !Orderings.symbol_typings;
 	 Symbol newsym
 	)
   | _ -> raise (Failure "create_and_insert_skolem_const failure")
