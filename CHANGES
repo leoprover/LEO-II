@@ -119,14 +119,15 @@ Problems LEO-II could not read at all
 Of 584 TH0 problems sampled evenly across TPTP, 197 ended in an error rather
 than an answer.  None do now, and 70 of them are proved.
 
-Measured over 800 problems sampled evenly across the TPTP THF theorems, at ten
-seconds and on one core:
+Measured over those 584, at ten seconds and on one core:
 
     1.9.4 before these fixes   278
     1.9.4                      348
 
-TH1 and the other fragments outside TH0 are not counted as failures above:
-LEO-II is a TH0 prover and does not read them.
+The 584 are the TH0 problems among 800 drawn evenly from the TPTP THF
+theorems.  The other 216 are TH1 and the fragments beside it, which LEO-II is
+not for and says so at once; counting them would measure the sampling rather
+than the prover.  test/tptp_check.py --th0 selects the TH0 problems.
 
 Measured over the 294 higher-order problems of Benzmueller and Scott's
 ontological-argument dataset, against 1.8.0 under identical conditions:
