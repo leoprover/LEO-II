@@ -89,6 +89,8 @@ def main():
     # Extra flags for LEO-II itself, so a candidate setting can be put through the
     # same net as the default one before it becomes the default.
     ap.add_argument('--leoargs', default='')
+    ap.add_argument('--sample', type=int, default=0,
+                    help='keep every k-th problem so that N remain, spread over all domains')
     a = ap.parse_args()
     leoargs = a.leoargs.split()
 
@@ -100,6 +102,13 @@ def main():
         problems = [p for p in problems if expected(p) in PROVED]
     if a.limit:
         problems = problems[:a.limit]
+    if a.sample and a.sample < len(problems):
+        # Every k-th problem of the sorted list.  --limit takes a prefix, which is
+        # one end of the alphabet and therefore a handful of domains; this spreads
+        # the sample over all of them and picks the same problems every time, so
+        # two runs of different settings are comparable.
+        k = len(problems) / float(a.sample)
+        problems = [problems[int(i * k)] for i in range(a.sample)]
 
     print('%d problems, %ds each, %d at a time' % (len(problems), a.timeout, a.jobs))
     counter = [0, len(problems), 0]
@@ -110,8 +119,10 @@ def main():
             rows = list(ex.map(lambda p: run_one(a.leo, a.atp, leoargs, p, tptp,
                                                  a.timeout, counter, w, fh), problems))
 
+    solved = sum(1 for r in rows if not r[4] and r[2] in PROVED)
     agreed = sum(1 for r in rows if not r[4] and r[2] in PROVED | REFUTED)
     print('\n-- %d problems' % len(rows))
+    print('   proved                             : %d' % solved)
     print('   answered, agreeing with the record : %d' % agreed)
     print('   contradicting the record           : %d' % counter[2])
     if counter[2]:

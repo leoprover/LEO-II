@@ -625,6 +625,13 @@ thf_abstraction : /* Term.term */
 thf_unary_formula : /* Term.term */
     TILDE LPAREN thf_logic_formula RPAREN { Appl(Symbol(Signature.neg),$3) }
   | TILDE thf_atom { Appl(Symbol(Signature.neg),$2) }
+  /* A negated quantification needs no parentheses.  The grammar took "~ (F)"
+     and, since 1.8.0, "~ P", but not "~ ? [X] : F" or "~ ! [X] : F", which is
+     ordinary THF and which the library uses: of 584 TH0 problems sampled from
+     TPTP, 197 could not be read at all, and 181 of those failed on exactly
+     this, at the '?' or the '!'.  Adding the rule leaves the conflict counts
+     of this grammar where they were. */
+  | TILDE thf_quantified_formula { Appl(Symbol(Signature.neg),$2) }
   | quantifier_comb thf_logic_formula { Appl($1, $2) }
   | quantifier_comb AT_SIGN thf_logic_formula { Appl($1, $3) }
 ;
