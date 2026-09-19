@@ -38,3 +38,5 @@ src/.depend
 test/ncpo_test
 test/*.cm*
 test/*.o
+src/parser-hotptp/htparser.output
+examples/summary.tex

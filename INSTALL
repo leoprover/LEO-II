@@ -45,8 +45,6 @@ LEO-II Installation Instructions:
                   [installation-directory]/leo2/bin/leo
 
  (7) Try the following in case of errors during build
-       - Run "make list_versions" and check if all the version numbers
-         are identical.
        - If you have multiple versions of OCaml in your PATH, you
          can specify which version to use via the --ocamlbindir parameter
          to the configure script.
@@ -57,7 +55,7 @@ Enabling the cooperation of LEO-II with at least one First-Order Prover:
   of a first order prover is crucial in order to run LEO-II. While LEO-II
   can cooperate with different first-order provers, we recommend here to
   install the 'The E Equational Theorem Prover' which is available at
-  http://www4.informatik.tu-muenchen.de/~schulz/WORK/eprover.html
+  https://github.com/eprover/eprover
 
 - In the following we assume that the binary for running prover E is available
   in file
@@ -69,6 +67,12 @@ Enabling the cooperation of LEO-II with at least one First-Order Prover:
                    e = [eprover-directory]/eprover
 		   epclextract = [eprover-directory]/epclextract
 
+  The epclextract entry is needed only for "--proofoutput 2", which reports
+  what the first-order prover contributed.  Without it that option has
+  nothing to call.  Everything else works with the e entry alone, and
+  "--atp e=[eprover-directory]/eprover" on the command line does instead of
+  the file.
+
 Running LEO-II in Automatic Mode:
 - To start LEO-II you need to type:
                   [installation-directory]/leo2/bin/leo
@@ -76,15 +80,23 @@ Running LEO-II in Automatic Mode:
                   [installation-directory]/leo2/bin/leo [OPTIONS] [FILE]
   In order to see which options can be set, run
                   [installation-directory]/leo2/bin/leo --help
-- Usage examples:
-   [installation-directory]/leo2/bin/leo [installation-directory]/leo2/distrib_examples/BrownSmolka-1.thf --proofoutput 1
-
-   [installation-directory]/leo2/bin/leo -d [installation-directory]/leo2/distrib_examples -f e -t 40
-   (please make sure that you have write permissions for [installation-directory]/leo2/distrib_examples)
+- Two examples are in [installation-directory]/leo2/examples.  Both are
+  proved in well under a second:
+   [installation-directory]/leo2/bin/leo [installation-directory]/leo2/examples/extensionality.p --proofoutput 1
+   [installation-directory]/leo2/bin/leo [installation-directory]/leo2/examples/sets.p
 
    At CASC LEO-II is called as follows:
    [installation-directory]/leo2/bin/leo --timeout 30 --proofoutput 1 --foatp e \
      --atp e=[e-directory]/eprover '[problem-file-directory/SET014^4.tptp'
 
 
+Running several settings at once:
+- "--cores N" runs N settings side by side and answers with the first that
+  settles the problem.  The default is one core, at which nothing runs in
+  parallel and the search is exactly what it has always been.
+
 Running LEO-II in Interactive Mode is not currently recommended due to several open issues.
+
+The same holds for directory mode ("-d"): it writes its summary table, but it
+does not give each problem a time budget, so it reports every problem as
+unproved.  Run problems one at a time.

@@ -2031,7 +2031,19 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
 		  (*	  timed (prove_with_fo_atp st prover) as file_name; *)
 		  
 		  end_timeout ()
-            with Timeout -> handle_timeout ());
+            (*One problem must not end the run.  Only Timeout was caught here,
+              and STRATEGY_TERMINATED -- which is how a time slice ends, not an
+              error -- escaped to the top and reported SZS Error for the whole
+              directory.  Anything a single problem raises is its own result;
+              the next problem still gets its turn.*)
+            with
+              | Timeout -> handle_timeout ()
+              | State.STRATEGY_TERMINATED -> ()
+              | Termination _ -> ()
+              | e ->
+                  Util.sysoutf 0
+                    (fun () -> ("\n% SZS status Error for " ^ file_name ^
+                                " : " ^ Printexc.to_string e)));
 	   let _ = write_proof_protocol st in
 	     (*	timed (try (prove st)  with  Failure s -> ()) as file_name; *)
 	   let time_info = (get_all_totals_with_atp_times_for_prefix file_name) in
