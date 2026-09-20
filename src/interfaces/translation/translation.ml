@@ -1073,12 +1073,27 @@ let tr_add_fo_clauses (cll : Clause.cl_clause list) (st : State.state) =
 
           let analysis_result = analysis fo_clauses in
 
-          let string_of_clauses =
-            List.map
-              (apsnd (transform_fmla_af
-                        (fun x -> x <> Proxy)
-                        (transf analysis_result)
-                      @> print_af cfg))
+          (*A clause that cannot be rendered in the target syntax is dropped,
+            not fatal.  The first-order prover is an incomplete helper: giving
+            it fewer clauses can only cost a refutation it might have found,
+            never add one, so a subset is sound.  Aborting the whole proof
+            attempt instead -- which is what an escaping exception here does,
+            and what the assertions in pK_wrap did on clauses that only arise
+            with definitions left folded -- costs every refutation, including
+            the ones LEO-II could still have found on its own.*)
+          let render =
+            transform_fmla_af (fun x -> x <> Proxy) (transf analysis_result)
+            @> print_af cfg in
+          let string_of_clauses l =
+            List.filter_map
+              (fun (n, f) ->
+                 try Some (n, render f)
+                 with e ->
+                   Util.sysoutf 2
+                     (fun () -> ("\n% Clause " ^ n ^ " has no first-order form (" ^
+                                 Printexc.to_string e ^ "); it is left out of this call."));
+                   None)
+              l
 
           in
             begin

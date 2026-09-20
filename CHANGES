@@ -3,13 +3,14 @@
 v2.0
 ----
 
-2.0 answers 222 of the 294 problems of the ontological-argument dataset at ten
-seconds, against 174 for 1.9.6.  On one core it answers about 180 -- three
-runs of the same binary gave 179, 180 and 183, which is the spread a ten
-second limit has on a machine doing anything else, and worth remembering
-before reading much into a difference of two.  The portfolio figure reproduced
-exactly across two runs.  Three things account for the difference, and one of
-them is the thing itself.
+2.0 answers 221 of the 294 problems of the ontological-argument dataset at ten
+seconds given the whole machine, against 174 for 1.9.6.  On one core it
+answers about 180.  Neither figure is exact: four runs of the same binary on
+one core gave 179, 180, 180 and 183, and two portfolio runs gave 221 and 222.
+That is the spread a ten second limit has on a machine doing anything else,
+and it is worth remembering before reading much into a difference of two.
+Three things account for the improvement, and one of them is the thing
+itself.
 
 **The type tags handed to the first-order prover.**  LEO-II encodes a
 higher-order problem in first-order logic by tagging every subterm with its
