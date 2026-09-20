@@ -1,5 +1,38 @@
                     THE LEO-II System -- Changes
 
+v1.9.6
+------
+
+1.9.6 makes "-t" a limit on the run.  In 1.9.5 it bounded a time slice, and
+the work that happens outside a slice was unbounded: on 106 of 584 TH0
+problems drawn from TPTP the prover ran more than sixteen seconds at "-t 10",
+and on some it did not stop at all.  Six do now, and the worst case fell from
+over two minutes to fifteen seconds.
+
+  * The clock is read while a clause is indexed.  The position of a subterm is
+    a list, one element per step into the term, and it is the key of a
+    hashtable, so comparing keys costs their length; on a problem with deep
+    terms that was 98% of the run, inside a single call that nothing
+    interrupted.
+  * The clock starts when the prover does, not when the first slice is made.
+    Reading the problem and choosing the strategies happens before any slice
+    exists and can outlast the whole limit.
+  * A repeating real-time alarm backs both up.  It arrives wherever the prover
+    happens to be, so a loop does not have to know about the limit to respect
+    it.  It repeats because a single alarm is swallowed by any handler that
+    catches everything.
+
+Also, two kinds of work that nothing reads: every clause was rendered into a
+string for a proof protocol that is only kept when proof output was asked for,
+and 208 debug calls built their strings before the verbosity was tested -- one
+at level 0, so a whole clause was printed for every application of primitive
+substitution.
+
+What the prover proves is unchanged: 175 of the 294 problems of the
+ontological-argument dataset and 345 of the 584, both within the spread of the
+1.9.5 figures.  0 of 45 non-theorems, and no contradiction against the record
+on the 477 TPTP problems with countermodels.
+
 v1.9.5
 ------
 
