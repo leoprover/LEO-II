@@ -66,7 +66,7 @@ let handle_timeout () =
       if !current_problem_file = "" then
         Util.sysout 1 "\n"
       else
-        Util.sysout 1 (" for " ^ !current_problem_file ^ "\n");
+        Util.sysoutf 1 (fun () -> (" for " ^ !current_problem_file ^ "\n"));
       kill_children ()
     end
 
@@ -163,13 +163,13 @@ let cmd_boolean_ext (st:state) args =
       let bool_clauses = boolean_ext clause st in
       index_clauselist_with_role bool_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set bool_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- bool --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string bool_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Input-Boolean Extensionality *)
@@ -180,13 +180,13 @@ let cmd_boolean_ext_pos (st:state) args =
       let bool_clauses = boolean_ext_pos clause st in
       index_clauselist_with_role bool_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set bool_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- bool-pos --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string bool_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Choice rule (exhaustive) *)
@@ -197,13 +197,13 @@ let cmd_detect_choice (st:state) args =
       let resclauses = detect_choice clause st in
       index_clauselist_with_role resclauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set resclauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysoutf 1 (fun () -> ("--- detect choice (addition of choice operators to state as possible side effect) --->"));
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string resclauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
   | Not_found ->
       Util.sysout 1 ("\n* Clause not found. Try again.\n");
@@ -218,13 +218,13 @@ let cmd_apply_choice (st:state) args =
       let choiceclauses = apply_choice clause st in
       index_clauselist_with_role choiceclauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set choiceclauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- apply choice --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string choiceclauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
   | Not_found ->
       Util.sysout 1 ("\n* Clause not found. Try again.\n");
@@ -241,13 +241,13 @@ let cmd_cnf (st:state) args =
       let cnfclauses = cnf_normalize_step clause st in
       index_clauselist_with_role cnfclauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set cnfclauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- cnf --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string cnfclauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
   | Not_found ->
       Util.sysout 1 ("\n* Clause not found. Try again.\n");
@@ -262,13 +262,13 @@ let cmd_cnf_exhaustive (st:state) args =
       let cnfclauses = exhaustive (raise_to_list cnf_normalize_step) [clause] st in
       index_clauselist_with_role cnfclauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set cnfclauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- cnf-exhaustive --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string cnfclauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
   | Not_found ->
       Util.sysout 1 ("\n* Clause not found. Try again.\n");
@@ -295,7 +295,7 @@ let cmd_cnf_all (st:state) _ =
   set_active st (list_to_set cnfclauses_active);
   index_clauselist_with_role cnfclauses_passive st;
   set_passive st (list_to_set cnfclauses_passive);
-  Util.sysout 1 (state_to_string st);
+  Util.sysoutf 1 (fun () -> (state_to_string st));
   true
 
 
@@ -309,7 +309,7 @@ let cmd_cnf_all_exhaustive (st:state) _ =
   set_active st (list_to_set cnfclauses_active);
   index_clauselist_with_role cnfclauses_passive st;
   set_passive st (list_to_set cnfclauses_passive);
-  Util.sysout 1 (state_to_string st);
+  Util.sysoutf 1 (fun () -> (state_to_string st));
   true
 
 
@@ -322,13 +322,13 @@ let cmd_standard_extcnf (st:state) args =
       let cnfclauses = standard_extcnf clause st in
       index_clauselist_with_role cnfclauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set cnfclauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- standard-extcnf --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string cnfclauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
   | Not_found ->
       Util.sysout 1 ("\n* Clause not found. Try again.\n");
@@ -344,13 +344,13 @@ let cmd_dec (st:state) args =
       let dec_clauses = decompose clause st in
       index_clauselist_with_role dec_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set dec_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- dec --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string dec_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (*
@@ -362,13 +362,13 @@ let cmd_dec_exhaustive (st:state) args =
       let dec_ex_clauses = exhaustive (raise_to_list decompose) [clause] st in
       index_clauselist_with_role dec_ex_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set dec_ex_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- dec-exhaustive --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string dec_ex_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 *)
 
@@ -380,13 +380,13 @@ let cmd_functional_ext (st:state) args =
       let func_clauses = functional_ext clause st in
       index_clauselist_with_role func_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set func_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- func --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -398,13 +398,13 @@ let cmd_functional_ext_exhaustive (st:state) args =
       let func_ext_clauses = exhaustive (raise_to_list functional_ext) [clause] st in
       index_clauselist_with_role func_ext_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set func_ext_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- func-exhaustive --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_ext_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -416,13 +416,13 @@ let cmd_functional_ext_pos (st:state) args =
       let func_clauses = functional_ext_pos clause st in
       index_clauselist_with_role func_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set func_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- func-pos --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -434,13 +434,13 @@ let cmd_functional_ext_exhaustive_pos (st:state) args =
       let func_ext_clauses = exhaustive (raise_to_list functional_ext_pos) [clause] st in
       index_clauselist_with_role func_ext_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set func_ext_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- func-pos-exhaustive --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string func_ext_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Primitive Substitution Rule *)
@@ -451,13 +451,13 @@ let cmd_prim_subst (st:state) args =
       let prim_subst_clauses = prim_subst clause st in
       index_clauselist_with_role prim_subst_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set prim_subst_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- prim-subst --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string prim_subst_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -469,13 +469,13 @@ let cmd_replace_leibnizEQ (st:state) args =
       let replace_clauses = replace_leibniz_lits clause st in
       index_clauselist_with_role  replace_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set  replace_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- replace-leibnizEQ --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string replace_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Replace Andrews Literals Rule *)
@@ -486,13 +486,13 @@ let cmd_replace_andrewsEQ (st:state) args =
       let replace_clauses = replace_andrews_lits clause st in
       index_clauselist_with_role replace_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set replace_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- replace-andrewsEQ --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string replace_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Pre-Processing *)
@@ -518,7 +518,7 @@ let cmd_pre_process (st:state) _ =
       | MAX_LOOPS -> true
       | ACTIVE_EMPTY -> true
       | Failure s ->
-          Util.sysout 1 (s ^ "\n* Failure: " ^ s ^ "\n");
+          Util.sysoutf 1 (fun () -> (s ^ "\n* Failure: " ^ s ^ "\n"));
           false
 
 (** Bounded Looping *)
@@ -535,7 +535,7 @@ let rec cmd_loop (st:state) args =
     | MAX_LOOPS -> true
     | ACTIVE_EMPTY -> true
     | Failure s ->
-        Util.sysout 1 (s ^ "\n* Try again.\n");
+        Util.sysoutf 1 (fun () -> (s ^ "\n* Try again.\n"));
         false
 
 (** Flex-Rigid Rule *)
@@ -546,13 +546,13 @@ let cmd_flex_rigid (st:state) args =
       let flex_rigid_clauses = flex_rigid clause st in
       index_clauselist_with_role flex_rigid_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set flex_rigid_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- flex-rigid --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string flex_rigid_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -564,13 +564,13 @@ let cmd_subst_or_clash (st:state) args =
       let substituted_clauses = subst_or_clash clause st in
       index_clauselist_with_role substituted_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set substituted_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- subst-or-clash --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string substituted_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** The Substitution or Clash Exhaustive Rule *)
@@ -581,13 +581,13 @@ let cmd_subst_or_clash_exhaustive (st:state) args =
       let substituted_clauses = exhaustive (raise_to_list subst_or_clash) [clause] st in
       index_clauselist_with_role substituted_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set substituted_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- subst-or-clash-exhaustive --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string substituted_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Resolution *)
@@ -600,14 +600,14 @@ let cmd_res (st:state) args =
       let res_clauses = resolve cl1 cl2 st in
       index_clauselist_with_role res_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set res_clauses));
-      Util.sysout 1 (cl_clause_to_string cl1);
-      Util.sysout 1 (cl_clause_to_string cl2);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string cl1));
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string cl2));
       Util.sysout 1 ("--- res --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string res_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -619,13 +619,13 @@ let cmd_fac_restr (st:state) args =
       let sim_clauses = factorize_restricted clause st in
       index_clauselist_with_role sim_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set sim_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- fac-restr --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string sim_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Trivial Subsumtion *)
@@ -636,14 +636,14 @@ let cmd_triv_subsumes (st:state) args =
       let cl1 = find_clause_by_number st n2 in
       let cl2 = find_clause_by_number st n1 in
       let flag = triv_subsumes cl1 cl2 in
-      Util.sysout 1 (cl_clause_to_string cl1);
-      Util.sysout 1 (cl_clause_to_string cl2);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string cl1));
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string cl2));
       Util.sysout 1 ("--- triv-subsumes --->");
-      Util.sysout 1 ("\n "^(string_of_bool flag)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(string_of_bool flag)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** FO-Matching Subsumtion *)
@@ -654,14 +654,14 @@ let cmd_fo_match_subsumes (st:state) args =
       let cl1 = find_clause_by_number st n2 in
       let cl2 = find_clause_by_number st n1 in
       let flag = fo_match_subsumes cl1 cl2 st in
-      Util.sysout 1 (cl_clause_to_string cl1);
-      Util.sysout 1 (cl_clause_to_string cl2);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string cl1));
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string cl2));
       Util.sysout 1 ("--- fo-match-subsumes --->");
-      Util.sysout 1 ("\n "^(string_of_bool flag)^"\n");
+      Util.sysoutf 1 (fun () -> ("\n "^(string_of_bool flag)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** (old!) Extensional Pre Unification *)
@@ -672,13 +672,13 @@ let rec cmd_uni (st:state) args =
       let uni_clauses = unify_pre_ext_old clause st in
       index_clauselist_with_role uni_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set uni_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- uni-pre-ext --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string uni_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** (new!) Extensional Pre Unification *)
@@ -689,13 +689,13 @@ let rec cmd_pre_unify (st:state) args =
       let uni_clauses = pre_unify clause st in
       index_clauselist_with_role uni_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set uni_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- uni-pre-ext --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string uni_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -735,7 +735,7 @@ let cmd_unfold_defs_exhaustive (st:state) _ =
 	set_passive st (list_to_set (replace_unfolded_clauses_in_clauselist (Set_of_clauses.elements st.passive) newclauses)); 
         *)
 	
-	Util.sysout 1 (cl_clauselist_to_string oldclauses);
+	Util.sysoutf 1 (fun () -> (cl_clauselist_to_string oldclauses));
 	Util.sysout 1 ("--- unfold-defs --->");
 	Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string newclauses)^"\n"));
 	Util.stop_timer "Time for Definition Unfold";
@@ -748,7 +748,7 @@ let cmd_unfold_defs_exhaustive (st:state) _ =
 	  index_clauselist_with_role newclauses st;
 	  set_active st (Set_of_clauses.union st.active (list_to_set newclauses));
 	  
-	  Util.sysout 1 (cl_clauselist_to_string oldclauses);
+	  Util.sysoutf 1 (fun () -> (cl_clauselist_to_string oldclauses));
 	  Util.sysout 1 ("--- unfold-defs --->");
 	  Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string newclauses)^"\n"));
 	  ) as "Time for Definition Unfold";
@@ -768,7 +768,7 @@ let cmd_fold_node (st:state) args =
     index_clauselist_with_role newclauses st;
     set_active st (Set_of_clauses.union st.active (list_to_set newclauses));
 
-    Util.sysout 1 (cl_clauselist_to_string oldclauses);
+    Util.sysoutf 1 (fun () -> (cl_clauselist_to_string oldclauses));
     Util.sysout 1 ("--- fold-node --->");
     Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string newclauses)^"\n"));
   true
@@ -873,13 +873,13 @@ let cmd_sim (st:state) args =
       let sim_clauses = simplify clause st in
       index_clauselist_with_role sim_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set sim_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- sim --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string sim_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Global Simplify *)
@@ -900,13 +900,13 @@ let cmd_triv (st:state) args =
       let triv_clauses = trivial clause st in
       index_clauselist_with_role triv_clauses st;
       set_active st (Set_of_clauses.union st.active (list_to_set triv_clauses));
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- triv --->");
       Util.sysoutf 1 (fun () -> ("\n "^(cl_clauselist_to_string triv_clauses)^"\n"));
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -918,16 +918,16 @@ let cmd_help args =
     let (topic,_) = get_str_arg args in
     (match topic with
         "help" -> Util.sysout 1 "help^2\n"
-      | _ -> Util.sysout 1 ("Currently no help for "^topic^"\n"));
+      | _ -> Util.sysoutf 1 (fun () -> ("Currently no help for "^topic^"\n")));
     true)
   with _ -> (
     Util.sysout 1  "* The list of interactive LEO-II commands is:\n";
     Util.sysout 1  "*  ***** interactive LEO-II calculus rules *****\n";
     List.iter (fun (name,descr,_,_) ->
-      Util.sysout 1 ("*   "^name^descr^"\n")) !commands_calculus;
+      Util.sysoutf 1 (fun () -> ("*   "^name^descr^"\n"))) !commands_calculus;
     Util.sysout 1  "*  ***** general commands *****\n";
     List.iter (fun (name,descr,_,_) ->
-      Util.sysout 1 ("*   "^name^descr^"\n")) !commands_general;
+      Util.sysoutf 1 (fun () -> ("*   "^name^descr^"\n"))) !commands_general;
     Util.sysout 1 "\n";
     true)
 
@@ -977,7 +977,7 @@ let max_clauses_subdialog (st:state) =
 (*   Util.sysout 1 ("% SZS status GaveUp"); *)
    if st.origproblem_filename = ""
    then Util.sysout 1 "\n"
-   else Util.sysout 1 (" for "^st.origproblem_filename^"\n")
+   else Util.sysoutf 1 (fun () -> (" for "^st.origproblem_filename^"\n"))
   )
 
 (** The Max Loops Subdialog *)
@@ -990,7 +990,7 @@ let max_loops_subdialog (st:state) =
 (*   Util.sysout 1 ("% SZS status GaveUp"); *)
    if st.origproblem_filename=""
    then Util.sysout 1 "\n"
-   else Util.sysout 1 (" for "^st.origproblem_filename^"\n")
+   else Util.sysoutf 1 (fun () -> (" for "^st.origproblem_filename^"\n"))
   )
 
 (** The Max Unidepth Subdialog *)
@@ -1001,7 +1001,7 @@ let max_unidepth_subdialog (st:state) =
 (*   Util.sysout 1 ("% SZS status GaveUp"); *)
    if st.origproblem_filename=""
    then Util.sysout 1 "\n"
-   else Util.sysout 1 (" for "^st.origproblem_filename^"\n")
+   else Util.sysoutf 1 (fun () -> (" for "^st.origproblem_filename^"\n"))
   )
 
 (** The Active Empty Subdialog *)
@@ -1011,7 +1011,7 @@ let active_empty_subdialog (st:state) =
 (*    Util.sysout 1 ("% SZS status GaveUp"); *)
     if st.origproblem_filename=""
     then Util.sysout 1 "\n"
-    else Util.sysout 1 (" for "^st.origproblem_filename^"\n"))
+    else Util.sysoutf 1 (fun () -> (" for "^st.origproblem_filename^"\n")))
   else Util.sysout 1 ""
 
 
@@ -1104,7 +1104,7 @@ let init_problem termlist sigma termroles (kind,filename) st =
     if (is_an_input_logic "FOF") || (is_an_input_logic "CNF") then
       ignore(set_flag_atp_timeout st 600);
 
-    Util.sysout 2 (state_to_string st);
+    Util.sysoutf 2 (fun () -> (state_to_string st));
 
     Util.sysout 2 "\n***********************************************************************";
     Util.sysoutf 2 (fun () -> ("\nNew State Initialized for Problem: "
@@ -1135,7 +1135,7 @@ let cmd_read_problem_string (st:state) (name:string) args =
         proof_found_subdialog st;
         true
   | Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -1149,7 +1149,7 @@ let write_original_problem_to_hotptp_file (st:state) =
   let chan = open_out filename_new in
     output_string chan (origproblem_to_hotptp st);
     close_out chan;
-    Util.sysout 1 (origproblem_to_hotptp st);
+    Util.sysoutf 1 (fun () -> (origproblem_to_hotptp st));
     Util.sysoutf 0 (fun () -> ("\nThe pretty print of the original problem has been written to file: \n "^filename_new^"\n\n"));
   true
 
@@ -1177,7 +1177,7 @@ let cmd_read_problem_file (st:state) args =
         (*in automatic mode let failures float up*)
         if global_conf.interactive then
           begin
-            Util.sysout 1 (s^"\n* Try again.\n");
+            Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
             false
           end
         else raise e
@@ -1260,9 +1260,9 @@ let analyze (st:state) =
   let ratio_definedSymbols_undefinedSymbols =  if no_of_undefined_symbols > 0 then (float_of_int no_of_defined_symbols) /. (float_of_int no_of_undefined_symbols) else (float_of_int no_of_defined_symbols) in 
   begin
    
-    Util.sysout 0 (state_to_string st);
+    Util.sysoutf 0 (fun () -> (state_to_string st));
     Util.sysoutf 0 (fun () -> ( "\n------------- The Termset -------------"^"\n"));
-    Util.sysout 0 (Termset.to_string st.index.termbase);
+    Util.sysoutf 0 (fun () -> (Termset.to_string st.index.termbase));
     Util.sysoutf 0 (fun () -> ( "------------- End Termset -------------"^"\n"));
     analyze_termset st.index;
     Util.sysout 0  ( "\n\n\n");
@@ -1300,7 +1300,7 @@ let cmd_analyze (st:state) _ =
 (** Analyze Index *)
 let cmd_analyze_index (st:state) _ =
   Util.sysoutf 1 (fun () -> ( "\n------------- The Termset -------------"^"\n"));
-  Util.sysout 1 (Termset.to_string st.index.termbase);
+  Util.sysoutf 1 (fun () -> (Termset.to_string st.index.termbase));
   Util.sysoutf 1 (fun () -> ( "------------- End Termset -------------"^"\n"));
   analyze_termset st.index;
   true
@@ -1308,7 +1308,7 @@ let cmd_analyze_index (st:state) _ =
 
 (** Analyze Termgraph *)
 let cmd_analyze_termgraph (st:state) _ =
-  Util.sysout 1 (Termset.to_string st.index.termbase);
+  Util.sysoutf 1 (fun () -> (Termset.to_string st.index.termbase));
   true
 
 
@@ -1321,7 +1321,7 @@ let cmd_max_clause_count (st:state) args =
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Set Relevanc Filter Level *)
@@ -1333,7 +1333,7 @@ let cmd_relevance_filter_level (st:state) args =
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -1346,7 +1346,7 @@ let cmd_max_loop_count (st:state) args =
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (** Set Max Uni Depth *)
@@ -1358,7 +1358,7 @@ let cmd_max_uni_depth (st:state) args =
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 (*FIXME This is quite general, so should move it to a library module*)  
@@ -1562,7 +1562,7 @@ let write_original_problem_to_hotptp_file (st:state) =
   let chan = open_out filename_new in
     output_string chan (origproblem_to_hotptp st);
     close_out chan;
-    Util.sysout 0 (origproblem_to_hotptp st);
+    Util.sysoutf 0 (fun () -> (origproblem_to_hotptp st));
     Util.sysoutf 0 (fun () -> ("\nThis HOTPTP representation has been written to file: \n "^filename_new^"\n"));
   true
 
@@ -1712,7 +1712,7 @@ let prove_with_fo_atp (st : state) (prover : string) =
           begin
             try
               set_active st (list_to_set (cl :: st.problem_axioms));
-              Util.sysout 2 (state_to_string st);
+              Util.sysoutf 2 (fun () -> (state_to_string st));
               (*prove_help will return with an exception such
                 as EMPTYCLAUSE_DERIVED if anything interesting happens*)
               if prover = "none" then
@@ -1875,7 +1875,7 @@ let cmd_prove_with_fo_atp (st:state) args =
           (*in automatic mode let failures float up*)
           if global_conf.interactive then
             begin
-              Util.sysout 1 (s^"\n* Try again.\n");
+              Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
               false
             end
           else raise e
@@ -1892,7 +1892,7 @@ let cmd_fo_translation (st:state) args =
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
 
 
@@ -1952,7 +1952,7 @@ let cmd_prove_directory (st:state) args =
   let list_of_status_result_tuples =
     List.map
       (fun file_name ->
-        Util.sysout 1 ("Reading "^file_name^"...\n");
+        Util.sysoutf 1 (fun () -> ("Reading "^file_name^"...\n"));
 	state_reset st;
 	protocol_init ();
 	fo_clauses_init st;
@@ -2120,7 +2120,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        Util.sysout 1 ("Unknown test problem number.\n");
        false
    | Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
  (** Reset State *)
@@ -2128,7 +2128,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
    state_reset st;
    protocol_init ();
    fo_clauses_init st;
-   Util.sysout 1 (state_to_string st);
+   Util.sysoutf 1 (fun () -> (state_to_string st));
    true
 
 (** Initialize next Problem *)
@@ -2141,7 +2141,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        set_active st (list_to_set ((List.hd st.problem_stack)::st.problem_axioms));
        set_passive st Set_of_clauses.empty;
        set_problem_stack st (List.tl st.problem_stack);
-       Util.sysout 1 (state_to_string st);
+       Util.sysoutf 1 (fun () -> (state_to_string st));
        true
      )
    else
@@ -2159,7 +2159,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 
@@ -2172,7 +2172,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
  (** Show Input Logic *)
@@ -2188,7 +2188,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
 
  (** Show State *)
  let cmd_show_state (st:state) _ =
-   Util.sysout 1 (state_to_string st);
+   Util.sysoutf 1 (fun () -> (state_to_string st));
    true
 
 
@@ -2232,7 +2232,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
  (** Find Equals Symbol *)
@@ -2254,7 +2254,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
  (** Set Timeout *)
@@ -2262,11 +2262,11 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
    try (
        let (n,_) = get_int_arg args in
 	 (set_timeout n);
-	 Util.sysout 1 ("\n* Timeout set to"^(string_of_int n));
+	 Util.sysoutf 1 (fun () -> ("\n* Timeout set to"^(string_of_int n)));
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 (** Set Timeout *)
@@ -2278,7 +2278,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 
@@ -2286,11 +2286,11 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
  let cmd_inspect_node (st:state) args =
    try (
        let (n,_) = get_int_arg args in
-       Util.sysout 1 (inspect_node st.index n role_to_string);
+       Util.sysoutf 1 (fun () -> (inspect_node st.index n role_to_string));
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
  (** Inspect Symbol *)
@@ -2301,7 +2301,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
  (** State To Post *)
@@ -2312,7 +2312,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
 
 (** Orignal Problem To HOTPTP *)
  let cmd_origproblem_to_hotptp (st:state) _ =
-   Util.sysout 1 (origproblem_to_hotptp st);
+   Util.sysoutf 1 (fun () -> (origproblem_to_hotptp st));
    true
 
 (** Translate clause to FOTPTP FOF syntax *)
@@ -2323,14 +2323,14 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
        match cl_clause_to_fotptp_cnf clause st with
 	 [(n,trans_string)] ->
 	   (
-	    Util.sysout 1 (cl_clause_to_string clause);
+	    Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
 	    Util.sysout 1 ("--- translates to --->");
-	    Util.sysout 1 ("\n "^trans_string^"\n");
+	    Util.sysoutf 1 (fun () -> ("\n "^trans_string^"\n"));
 	    true
 	   )
        | _ ->
 	   (
-	    Util.sysout 1 (cl_clause_to_string clause);
+	    Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
 	    Util.sysout 1 ("--- translates to --->");
 	    Util.sysout 1 ("\n [] \n");
 	    true
@@ -2338,7 +2338,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
     )
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 (** Translate clause to TPTP THF syntax *)
@@ -2347,14 +2347,14 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
      (
        let (n,_) = get_int_arg args in
        let clause = find_clause_by_number st n in
-	 Util.sysout 1 (cl_clause_to_string clause);
+	 Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
 	 Util.sysout 1 ("--- tptp thf --->");
 	 Util.sysoutf 1 (fun () -> ("\n "^(cl_axiom_clause_to_thf clause)^"\n"));
 	 true
      )
    with
        Failure s ->
-	 Util.sysout 1 (s^"\n* Try again.\n");
+	 Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
 	 false
 
   
@@ -2374,7 +2374,7 @@ let cmd_prove_directory_with_fo_atp (st:state) args =
      true) 
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
   | Not_found ->
       Util.sysout 1 ("\n* Clause not found. Try again.\n");
@@ -2387,13 +2387,13 @@ let cmd_delete_clause (st:state) args =
   try (
       let (n,_) = get_int_arg args in
       let clause = find_and_remove_clause_by_number st n in
-      Util.sysout 1 (cl_clause_to_string clause);
+      Util.sysoutf 1 (fun () -> (cl_clause_to_string clause));
       Util.sysout 1 ("--- deleted --->");
       Util.sysout 1 ("[]\n");
       true)
   with
     Failure s ->
-      Util.sysout 1 (s^"\n* Try again.\n");
+      Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
       false
   | Not_found ->
       Util.sysout 1 ("\n* Clause not found. Try again.\n");
@@ -2410,7 +2410,7 @@ let cmd_delete_clause (st:state) args =
    with
      EMPTYCLAUSE_DERIVED -> true
    | Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 let cmd_call_fo_atp_early (st:state) args =
@@ -2418,9 +2418,9 @@ let cmd_call_fo_atp_early (st:state) args =
      let (prover,_) = get_str_arg args in
 (*
 (** Changed July 30 2012 **)
-     Util.sysout 2 (state_to_string st);
+     Util.sysoutf 2 (fun () -> (state_to_string st));
      unfold_nonlogical_defs_stack st;
-     Util.sysout 2 (state_to_string st);
+     Util.sysoutf 2 (fun () -> (state_to_string st));
 (** End changed July 30 2012 **)
 *)
      call_fo_atp_early st prover;
@@ -2433,7 +2433,7 @@ let cmd_call_fo_atp_early (st:state) args =
 	 if st.flags.protocol_output then print_derivation_tstp None st else ();
 	 true
      | Failure s ->
-	 Util.sysout 1 (s^"\n* Try again.\n");
+	 Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
 	 false
 	   
 
@@ -2441,7 +2441,7 @@ let cmd_call_fo_atp_early (st:state) args =
  let cmd_flag_set_fo_atp (st:state) args =
    let (prover,_) = get_str_arg args in
      let _ = set_flag_atp_prover st prover in
-     Util.sysout 1 ("Flag FOATP set to: "^prover^"\n");
+     Util.sysoutf 1 (fun () -> ("Flag FOATP set to: "^prover^"\n"));
      true
 
 
@@ -2525,7 +2525,7 @@ let cmd_call_fo_atp_early (st:state) args =
      if String.length str > 0 then
        dot_range := str2range str
      else
-       Util.sysout 1 ((range2str !dot_range)^"\n");
+       Util.sysoutf 1 (fun () -> ((range2str !dot_range)^"\n"));
      if !dot_range != [] then
        (* dot_draw_closure *)
        let yn = ask (" - Draw all reachable nodes ("^(bool2y_n !dot_draw_closure)^")? ") in
@@ -2534,7 +2534,7 @@ let cmd_call_fo_atp_early (st:state) args =
 	 then dot_draw_closure := true (* !dot_draw_closure <- true *)
 	 else dot_draw_closure := false (* !dot_draw_closure <- false *)
        else
-	 Util.sysout 1 ((bool2yn !dot_draw_closure)^"\n")
+	 Util.sysoutf 1 (fun () -> ((bool2yn !dot_draw_closure)^"\n"))
      else ();
      empty_newlines := true;
      true)
@@ -2566,7 +2566,7 @@ let cmd_call_fo_atp_early (st:state) args =
        let chan = open_out file in
        output_string chan (Termset.to_dot ~dc:!dot_config ~range:!dot_range ~draw_closure:!dot_draw_closure st.index.termbase);
        close_out chan;
-       Util.sysout 1 ("File "^file^" written\n");
+       Util.sysoutf 1 (fun () -> ("File "^file^" written\n"));
        true)
    | Escape_pressed -> (
        Util.sysout 1 " cancel\n";
@@ -2591,7 +2591,7 @@ let cmd_call_fo_atp_early (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 (** Set atp timeout *)
@@ -2603,7 +2603,7 @@ let cmd_call_fo_atp_early (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 
@@ -2616,7 +2616,7 @@ let cmd_call_fo_atp_early (st:state) args =
        true)
    with
      Failure s ->
-       Util.sysout 1 (s^"\n* Try again.\n");
+       Util.sysoutf 1 (fun () -> (s^"\n* Try again.\n"));
        false
 
 (** Flag for Replacement of Leibniz literals in clauses*)

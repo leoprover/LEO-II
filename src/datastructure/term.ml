@@ -182,7 +182,7 @@ let type_of sigma t =
   in try typeof sigma t with
       Failure s ->
         begin
-          Util.sysout 0 ("\nHallo: " ^ s);
+          Util.sysoutf 0 (fun () -> ("\nHallo: " ^ s));
           failwith (" in term " ^ to_string t ^ ":\n" ^ s)
         end
 
@@ -333,10 +333,10 @@ let rec to_hotptp = function
 				| _ -> s)
 	| Appl(Symbol "!", Abstr(_,_,_)) as t ->
 	    Util.sysout 3 "\n Enter hier";
-	    Util.sysout 3 ("\n Printing: "^(to_string t)^"\n");
+	    Util.sysoutf 3 (fun () -> ("\n Printing: "^(to_string t)^"\n"));
 	    let res =
 	      let (_,args,body) = de_multi_quantified t in 
-	        Util.sysout 3 ("\n Body: "^(to_string body)^"\n");
+	        Util.sysoutf 3 (fun () -> ("\n Body: "^(to_string body)^"\n"));
 		"!["^(List.fold_left
 			  (fun acc (x,ty) -> lstapp acc	(x^":"^(Hol_type.to_hotptp ty)))
 			  "" args)^"]: "^(add_pars body)
@@ -450,7 +450,7 @@ let termlist_to_string (ts:term list) =
 let smaller_head t1 t2 =
   let res = String.compare (to_string (get_head_symbol t1)) (to_string (get_head_symbol t2))
   in
-    Util.sysout 3 ("\n t1: "^(to_string t1));
-    Util.sysout 3 ("\n t1: "^(to_string t2));
-    Util.sysout 3 ("\n res: "^(string_of_int res));
+    Util.sysoutf 3 (fun () -> ("\n t1: "^(to_string t1)));
+    Util.sysoutf 3 (fun () -> ("\n t1: "^(to_string t2)));
+    Util.sysoutf 3 (fun () -> ("\n res: "^(string_of_int res)));
     res <= 0

@@ -191,12 +191,12 @@ let fold_node_exhaustively st id =
 	       role_list in
 	   (!pure_roles,(Array.to_list litarray)) 
 	 in
-	 (* Util.sysout 3 (lit_litlist_to_protocol newlits); *)
+	 (* Util.sysoutf 3 (fun () -> (lit_litlist_to_protocol newlits)); *)
 	 let newclause = 
 	   mk_clause newlits (inc_clause_count st) clause.cl_free_vars 
 	     ("rewrite=",[(clause.cl_number,"")],"") clause.cl_origin st in
 	 (roles@old_roles,clause::old_clauses,newclause::new_clauses)
-        with Failure s  -> (Util.sysout 3 ("Failure: "^s^"\n");(old_roles,old_clauses,new_clauses)))
+        with Failure s  -> (Util.sysoutf 3 (fun () -> ("Failure: "^s^"\n"));(old_roles,old_clauses,new_clauses)))
        info_list ([],[],[])) in
   (oldroles,oldclauses,newclauses)
 
@@ -204,7 +204,7 @@ let fold_node_exhaustively st id =
 
 let unfold_def_info st =
   let subst=List.map
-            (fun (def_sym,(def,_)) -> (* (Util.sysout 3 (def_sym^":="^(Term.to_string def)^"\n");*)
+            (fun (def_sym,(def,_)) -> (* (Util.sysoutf 3 (fun () -> (def_sym^":="^(Term.to_string def)^"\n"));*)
                                       (Termset.index_term (Symbol def_sym) st.index,Termset.index_term def st.index))
             (all_defined_symbols st.signature)
   in
@@ -269,7 +269,7 @@ let unfold_defs_exhaustively st =
 	       role_list in
 	   (!pure_roles,(Array.to_list litarray)) 
 	 in
-	 (* Util.sysout 3 (lit_litlist_to_protocol newlits); *)
+	 (* Util.sysoutf 3 (fun () -> (lit_litlist_to_protocol newlits)); *)
 	 let newclause = 
 	   mk_clause newlits (inc_clause_count st) clause.cl_free_vars 
 	     ("unfold_def",[(clause.cl_number,"")],"") clause.cl_origin st in
@@ -465,7 +465,7 @@ let special_instantiation_oo_o (nvar:role xterm) (term:role xterm) st flag =
 
 let contains_choice_hd (xt:role xterm) st = false
 (*
-    Util.sysout 3 ( "\n\n HAS_CHOICE_HD: "^(to_string xt));
+    Util.sysoutf 3 (fun () -> ( "\n\n HAS_CHOICE_HD: "^(to_string xt)));
     let t = (xterm2term xt) in
     let result =
        match t with
@@ -931,10 +931,10 @@ let standard_extcnf_term term st =     (* see Nonnengart && Weidenbach 1999 *)
 	| t -> t
     ) in
 
-  let rec nnf t =
+let rec nnf t =
     (
       let rec nf term =
-	Util.sysout 3 ("\n nf term : "^(Term.to_hotptp term));
+	Util.sysoutf 3 (fun () -> ("\n nf term : "^(Term.to_hotptp term)));
 	match term with
 	  | Appl(Symbol "~",Appl(Appl(Symbol "<=>",t1),t2)) -> 
 	      nf (Appl(Symbol "~",(Appl(Appl(Symbol "|",(Appl(Appl(Symbol "&",t1),t2))),(Appl(Appl(Symbol "&",Appl(Symbol "~",t1)),Appl(Symbol "~",t2)))))))
@@ -996,7 +996,7 @@ let standard_extcnf_term term st =     (* see Nonnengart && Weidenbach 1999 *)
   let miniscope st term =
     (
       let rec ms st term = 
-	Util.sysout 3 ("\n ms term : "^(Term.to_hotptp term));
+	Util.sysoutf 3 (fun () -> ("\n ms term : "^(Term.to_hotptp term)));
 	match term with
 	    Appl(Symbol "!",Abstr(var,ty,Appl(Appl(Symbol "&",t1),t2))) ->  
 	      (
@@ -1054,7 +1054,7 @@ let standard_extcnf_term term st =     (* see Nonnengart && Weidenbach 1999 *)
   let standard_skolemize st term =
     (
       let rec sko st term freevars freevars_types = 
-	Util.sysout 3 ("\n sko term : "^(Term.to_hotptp term));
+	Util.sysoutf 3 (fun () -> ("\n sko term : "^(Term.to_hotptp term)));
 	match term with
 	    Appl(Symbol "!",Abstr(var,ty,t)) -> (Appl(Symbol "!",Abstr(var,ty,sko st t (var::freevars) (ty::freevars_types))))
 	  | Appl(Symbol "?",Abstr(var,ty,t)) -> 
@@ -1076,7 +1076,7 @@ let standard_extcnf_term term st =     (* see Nonnengart && Weidenbach 1999 *)
 (* 10/2009 dump copy and paste error fixed in the first actual renaming case below *)
     (
       let rec ren st term = 
-	Util.sysout 3 ("\n ren term : "^(Term.to_hotptp term));
+	Util.sysoutf 3 (fun () -> ("\n ren term : "^(Term.to_hotptp term)));
 	match term with
 	    Appl(Appl(Symbol "&",t1),t2)     -> (Appl(Appl(Symbol "&",ren st t1),ren st t2))
 	  | Appl(Appl(Symbol "|",Appl(Appl(Symbol "&",t1),t2)),t3) -> 
@@ -1094,7 +1094,7 @@ let standard_extcnf_term term st =     (* see Nonnengart && Weidenbach 1999 *)
     ) in
     
     
-    Util.sysout 3 ("\n *** term : "^(Term.to_hotptp term));
+    Util.sysoutf 3 (fun () -> ("\n *** term : "^(Term.to_hotptp term)));
     let res_simpl = simpl term st in
     Util.sysoutf 3 (fun () -> ("\n *** res_simpl              : "^(Term.to_hotptp res_simpl)));
     let res_nnf = nnf res_simpl in
@@ -1128,7 +1128,7 @@ let standard_extcnf (c:cl_clause) (st:state) =
 (*
 let standard_skolemize st term =
   let rec sko st term freevars freevars_types = 
-    Util.sysout 3 ("\n sko term : "^(Term.to_hotptp term));
+    Util.sysoutf 3 (fun () -> ("\n sko term : "^(Term.to_hotptp term)));
     match term with
 	Appl(Symbol "!",Abstr(var,ty,t)) -> (Appl(Symbol "!",Abstr(var,ty,sko st t (var::freevars) (ty::freevars_types))))
       | Appl(Symbol "?",Abstr(var,ty,t)) -> 
@@ -1153,7 +1153,7 @@ let rename (c:cl_clause) (st:state) =
 
 let rename_pos st term =
   let rec ren st term = 
-    Util.sysout 3 ("\n ren term : "^(Term.to_hotptp term));
+    Util.sysoutf 3 (fun () -> ("\n ren term : "^(Term.to_hotptp term)));
     match term with
 	Appl(Appl(Symbol "&",t1),t2)     -> (Appl(Appl(Symbol "&",ren st t1),ren st t2))
       | Appl(Appl(Symbol "|",Appl(Appl(Symbol "&",t1),t2)),t3) -> 
@@ -1406,14 +1406,14 @@ let clause_factorization st =
            (let subsumes = Hashtbl.create 1 in
             Hashtbl.add subsumes id1 (IdSet.singleton id2);
             Hashtbl.add clause_mods cl subsumes)  (*; 
-         Util.sysout 3 ("In clause "^(string_of_int cl)^":\n");
+         Util.sysoutf 3 (fun () -> ("In clause "^(string_of_int cl)^":\n"));
          Util.sysoutf 3 (fun () -> ("  term "^(string_of_int id1)^":"^(term_to_hotptp st.index.termbase id1)^" subsumes \n"));
          Util.sysoutf 3 (fun () -> ("  term "^(string_of_int id2)^":"^(term_to_hotptp st.index.termbase id2)^".\n"))*)
       )
     factorize;
     Hashtbl.iter
       (fun cl subsumes ->
-         Util.sysout 3 ("In clause "^(string_of_int cl)^":\n");
+         Util.sysoutf 3 (fun () -> ("In clause "^(string_of_int cl)^":\n"));
          (* remove self subsumption *)
          Hashtbl.iter
            (fun id1 lits -> if IdSet.mem id1 lits then Hashtbl.replace subsumes id1 (IdSet.remove id1 lits))
@@ -2180,13 +2180,13 @@ let imi_binding (hd1:term)  (arg_tys1:hol_type list) (ty1:hol_type) (hd2:term) (
   assert (ty1 = ty2);
   let new_vars = 
     List.map (fun ty -> create_and_insert_new_free_var_with_simple_name ty st) arg_tys1 in
-(*  Util.sysout 3 "\n new_vars: "; List.iter (fun x -> (Util.sysout 3 (Term.to_hotptp x))) new_vars; *)
+(*  Util.sysout 3 "\n new_vars: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> (Term.to_hotptp x)))) new_vars; *)
   let new_head_vars = 
     List.map (fun ty -> create_and_insert_new_free_var_with_simple_name (mk_funtype arg_tys1 ty) st) arg_tys2 in
-(*  Util.sysout 3 "\n new_head_vars: "; List.iter (fun x -> (Util.sysout 3 ((Term.to_string x)^" "))) new_head_vars; *)
+(*  Util.sysout 3 "\n new_head_vars: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) new_head_vars; *)
   let new_arg_terms =
     List.map (fun head -> mk_multi_appl head new_vars) new_head_vars in 
-(*  Util.sysout 3 "\n new_arg_terms: "; List.iter (fun x -> (Util.sysout 3 ((Term.to_string x)^" "))) new_arg_terms; *)
+(*  Util.sysout 3 "\n new_arg_terms: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) new_arg_terms; *)
   let new_compound_term = mk_multi_appl hd2 new_arg_terms in
 (*  (Util.sysoutf 3 (fun () -> ("\n new_compound_term: "^(Term.to_hotptp new_compound_term)))); *)
   let result = mk_multi_abstr (List.combine new_vars arg_tys1) new_compound_term in
@@ -2198,7 +2198,7 @@ let proj_bindings (hd:term)  (arg_tys:hol_type list) (ty:hol_type) (st:state) =
   output st (fun () -> ("\n\  ENTER PROJ-BINDING: "));
   let new_vars = 
     List.map (fun ty -> create_and_insert_new_free_var_with_simple_name ty st) arg_tys in
-(*  Util.sysout 3 "\n new_vars: ";  List.iter (fun x -> (Util.sysout 3 (Term.to_hotptp x))) new_vars; *)
+(*  Util.sysout 3 "\n new_vars: ";  List.iter (fun x -> (Util.sysoutf 3 (fun () -> (Term.to_hotptp x)))) new_vars; *)
  let result =
    List.flatten
      (List.map 
@@ -2206,15 +2206,15 @@ let proj_bindings (hd:term)  (arg_tys:hol_type list) (ty:hol_type) (st:state) =
 	  let proj_var_ty = Term.type_of (type_of_symbol st.signature) proj_var in
 (*       Util.sysoutf 3 (fun () -> ("\n proj_var_ty: "^(Hol_type.to_string proj_var_ty))); *)
 	  let (flag,proj_var_arg_tys) = all_arg_types_up_to_goal_type proj_var_ty ty in
-(*       Util.sysout 3 "\n proj_var_arg_tys:"; List.iter (fun x -> (Util.sysout 3 ((Hol_type.to_string x)^" "))) proj_var_arg_tys; *)
+(*       Util.sysout 3 "\n proj_var_arg_tys:"; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Hol_type.to_string x)^" ")))) proj_var_arg_tys; *)
 	  if (not flag) then []
 	  else
 	    let new_head_vars = 
 	      List.map (fun ty -> create_and_insert_new_free_var_with_simple_name  (mk_funtype arg_tys ty) st) proj_var_arg_tys in
-(*           Util.sysout 3 "\n new_head_vars: "; List.iter (fun x -> (Util.sysout 3 ((Term.to_string x)^" "))) new_head_vars; *)
+(*           Util.sysout 3 "\n new_head_vars: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) new_head_vars; *)
 	    let new_arg_terms =
 	      List.map (fun head -> mk_multi_appl head new_vars) new_head_vars in 
-(*           Util.sysout 3 "\n new_arg_terms: "; List.iter (fun x -> (Util.sysout 3 ((Term.to_string x)^" "))) new_arg_terms; *)
+(*           Util.sysout 3 "\n new_arg_terms: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) new_arg_terms; *)
 	    let new_compound_term = mk_multi_appl proj_var new_arg_terms in
 (*           Util.sysoutf 3 (fun () -> ("\n new_compound_term: "^(Term.to_hotptp new_compound_term))); *)
 	    [mk_multi_abstr (List.combine new_vars arg_tys) new_compound_term])
@@ -2292,8 +2292,8 @@ let flex_rigid_lit (l:role lit_literal) (st:state) =
       and ty2 = (Term.type_of (type_of_symbol st.signature) t2) in
       let hd1 = Term.get_head_symbol t1 
       and hd2 = Term.get_head_symbol t2 in
-(*    Util.sysout 3 ("\n hd1: "^(Term.to_string hd1)); *)
-(*    Util.sysout 3 ("\n hd2: "^(Term.to_string hd2)); *)
+(*    Util.sysoutf 3 (fun () -> ("\n hd1: "^(Term.to_string hd1))); *)
+(*    Util.sysoutf 3 (fun () -> ("\n hd2: "^(Term.to_string hd2))); *)
       let ty_hd1 = Term.type_of (type_of_symbol st.signature) hd1
       and ty_hd2 = Term.type_of (type_of_symbol st.signature) hd2 in
 (*    Util.sysoutf 3 (fun () -> ("\n ty_hd1: "^(Hol_type.to_string ty_hd1))); *)
@@ -2303,8 +2303,8 @@ let flex_rigid_lit (l:role lit_literal) (st:state) =
       and (flag2,arg_tys_l2) = (types_of_all_arg_terms_up_to_term t2 hd2 (type_of_symbol st.signature))
 (* (all_arg_types_up_to_goal_type ty_hd2 ty2) *)
       in
-(*    Util.sysout 3 "\n arg_tys_1:"; List.iter (fun x -> (Util.sysout 3 ((Hol_type.to_string x)^" "))) arg_tys_l1; *)
-(*    Util.sysout 3 "\n arg_tys_2:"; List.iter (fun x -> (Util.sysout 3 ((Hol_type.to_string x)^" "))) arg_tys_l2; *)
+(*    Util.sysout 3 "\n arg_tys_1:"; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Hol_type.to_string x)^" ")))) arg_tys_l1; *)
+(*    Util.sysout 3 "\n arg_tys_2:"; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Hol_type.to_string x)^" ")))) arg_tys_l2; *)
       if (Term.is_variable hd1) && (not (Term.is_variable hd2)) && (not (is_basetype ty_hd1)) && flag1 && flag2
       then 
 	(true,
@@ -2452,7 +2452,10 @@ let prim_subst (cl:cl_clause) (st:state) =
 			   | 4 -> base_1 ()@base_2 ()@base_3 ()@base_4 ()
 			   | _ -> base_1 ()@base_2 ()@base_3 ()@base_4 ()
 		     in
-		       Util.sysoutf 0 (fun () -> ("\n Prim_subst applied to clause \n "^(cl_clause_to_string cl)));
+		       (*Level 3, not 0.  This rendered a clause and printed it for
+			 every application of the rule, at the default verbosity,
+			 into the prover's own output.*)
+		       Util.sysoutf 3 (fun () -> ("\n Prim_subst applied to clause \n "^(cl_clause_to_string cl)));
 		       (List.iter (fun (xvar,xterm) -> Util.sysoutf 3 (fun () -> ("\n "^(to_string xvar)^" <- "^(to_string xterm)))) prim_subst_pairs);
 			
 		       List.flatten
@@ -3151,7 +3154,7 @@ let pre_unify_ext (cl : cl_clause) (st : state) =
                                       "(" ^ lit_litlist_to_protocol ul ^ "," ^ lit_litlist_to_protocol ffl ^
                                         "," ^ lit_litlist_to_protocol ol ^ ",subst-not-printed)," ^ s) new_tuples ""
                                   in
-                                    Util.sysout 3 ("\n  new_tuples: " ^ tuplestring);
+                                    Util.sysoutf 3 (fun () -> ("\n  new_tuples: " ^ tuplestring));
                                     pre_unify' (new_tuples @ rest_tuples) st accu (depth + 1) true
                             | ("flexrigid+bool",t1,t2,_,_) -> (* flexrigid unification literal and terms are of Boolean type;
                                                                  determine bindings and recurse with increased depth,
@@ -4087,13 +4090,13 @@ let rec filter_axioms_wrt_conjecture_h_1 (st:state) (axiom_clauses: cl_clause li
 let rec filter_axioms_wrt_conjecture_h_2 (st:state) (axiom_clauses: cl_clause list) (conj_clauses: cl_clause list) (level:int) (result: cl_clause list) =
   Util.sysoutf 3 (fun () -> ("\n   Enter filter_axioms_wrt_conjecture_h_2 with level: "^(string_of_int level)));   
   Util.sysout 3 ("\n   Conjecture clauses : ");
-  List.iter (fun cl ->  Util.sysout 3 ((string_of_int cl.cl_number)^" ")) conj_clauses;
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) conj_clauses;
+  List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((string_of_int cl.cl_number)^" "))) conj_clauses;
+  List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((cl_clause_to_string cl)^" "))) conj_clauses;
   Util.sysout 3 ("\n   Axiom clauses : "); 
-  List.iter (fun cl ->  Util.sysout 3 ((string_of_int cl.cl_number)^" ")) axiom_clauses;
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) axiom_clauses;
+  List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((string_of_int cl.cl_number)^" "))) axiom_clauses;
+  List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((cl_clause_to_string cl)^" "))) axiom_clauses;
   Util.sysout 3 ("\n   Result clauses : "); 		   
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) result;
+  List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((cl_clause_to_string cl)^" "))) result;
   
   let intersection list1 list2 =
     let res = ref [] 
@@ -4108,7 +4111,7 @@ let rec filter_axioms_wrt_conjecture_h_2 (st:state) (axiom_clauses: cl_clause li
     
   let print_info symlist = 
     Util.sysout 3 ("[ ");  
-    List.iter (fun sym ->  Util.sysout 3 (sym^" ")) symlist;
+    List.iter (fun sym ->  Util.sysoutf 3 (fun () -> (sym^" "))) symlist;
     Util.sysout 3 ("]\n") in  
     
     if level = 0 then result
@@ -4149,9 +4152,9 @@ let rec filter_axioms_wrt_conjecture (st:state) (axiom_clauses: cl_clause list) 
 
   Util.sysoutf 3 (fun () -> ("\n Relevance Filtering with level: "^(string_of_int level))); 
   Util.sysout 3 ("\n The conjecture clauses are: ");
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) conj_clauses;
+  List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((cl_clause_to_string cl)^" "))) conj_clauses;
   Util.sysout 3 ("\n The axiom clauses are: "); 
-  List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) axiom_clauses;
+  List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((cl_clause_to_string cl)^" "))) axiom_clauses;
   let result =
     if level = 0 then axiom_clauses
     else 
@@ -4176,7 +4179,7 @@ let rec filter_axioms_wrt_conjecture (st:state) (axiom_clauses: cl_clause list) 
 	  else res
   in
     Util.sysoutf 3 (fun () -> ("\n Relevance filtering is reducing the axiom clauses to: "));
-    List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) result;
+    List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((cl_clause_to_string cl)^" "))) result;
     result
 	 
 
@@ -4196,9 +4199,9 @@ let flex_heads (clauselist:cl_clause list) (st:state) =
       clauselist in
 
     Util.sysout 3 ("\n flex_heads applied to clause \n ");
-    List.iter (fun cl ->  Util.sysout 3 ((cl_clause_to_string cl)^" ")) clauselist;
+    List.iter (fun cl ->  Util.sysoutf 3 (fun () -> ((cl_clause_to_string cl)^" "))) clauselist;
     Util.sysout 3 "\n headvars=[";
-    List.iter (fun term -> Util.sysout 3 (" "^(Term.to_string term))) !headvars;
+    List.iter (fun term -> Util.sysoutf 3 (fun () -> (" "^(Term.to_string term)))) !headvars;
     Util.sysout 3 " ]\n";
     !headvars
 
@@ -4209,7 +4212,7 @@ let prim_subst_pairs (var:term) (st:state) =
   let var_arg_tys = all_arg_types var_ty in
     Util.sysoutf 3 (fun () -> ("\n "^(Term.to_string var)^": "^(Hol_type.to_string var_ty)));
     Util.sysout 3 "\n var_arg_tys: ";
-    List.iter (fun x -> (Util.sysout 3 ((Hol_type.to_string x)^" "))) var_arg_tys;
+    List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Hol_type.to_string x)^" ")))) var_arg_tys;
     (*Each level builds only what it returns.  These were ordinary let
       bindings, so every level was built before the flag below was read and
       the unused ones were then discarded -- "--primsubst 0" paid in full for
@@ -4400,7 +4403,7 @@ let detect_choice_terms (cl:cl_clause) (st:state) =
 	       if List.exists (fun v -> List.mem v freevars) boundvars 
                then  detect_choice_term_help bd boundvars
                else
-                let _ = Util.sysout 3 ("\n :  found"^(Term.to_string bd)) in
+                let _ = Util.sysoutf 3 (fun () -> ("\n :  found"^(Term.to_string bd))) in
                   (hd,hd,bd,(Term.type_of (type_of_symbol st.signature) (Appl(hd,bd))))::(detect_choice_term_help bd boundvars)
              else
                (if List.mem hd cl.cl_free_vars && is_choice_variable hd && (not (List.mem hd boundvars))
@@ -4456,11 +4459,11 @@ let detect_choice_terms (cl:cl_clause) (st:state) =
        (List.map 
          (fun (hd,choice,term,ty) -> 
            let termfreevars =  List.map (fun v -> (Symbol v)) (Term.free_vars term) in
-           let _ = Util.sysout 3 "\n termfreevars: "; List.iter (fun x -> (Util.sysout 3 ((Term.to_string x)^" "))) termfreevars in 
+           let _ = Util.sysout 3 "\n termfreevars: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) termfreevars in 
            let termrealfreevars = List.filter (fun v -> (List.mem v cl.cl_free_vars)) termfreevars in
-           let _ = Util.sysout 3 "\n termrealfreevars: "; List.iter (fun x -> (Util.sysout 3 ((Term.to_string x)^" "))) termrealfreevars in
+           let _ = Util.sysout 3 "\n termrealfreevars: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) termrealfreevars in
            let termcapturedvars = List.filter (fun v -> not (List.mem v cl.cl_free_vars)) termfreevars in
-           let _ = Util.sysout 3 "\n termcapturedvars: "; List.iter (fun x -> (Util.sysout 3 ((Term.to_string x)^" "))) termcapturedvars in
+           let _ = Util.sysout 3 "\n termcapturedvars: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) termcapturedvars in
 	   let var = create_and_insert_new_free_var_with_simple_name ty st in
            let choiceAxInst = (Appl(Appl(Symbol("|"),(Appl(Symbol("~"),(Appl(Symbol("~"),(Appl(Symbol("!"),(Abstr(var,ty,(Appl(Symbol("~"),(Appl(term,var))))))))))))),(Appl(term,(Appl(choice,term)))))) in
            let lit1 = (lit_mk_pos_literal st.signature (term2xterm (beta_normalize choiceAxInst))) in 

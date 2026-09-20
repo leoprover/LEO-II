@@ -74,6 +74,13 @@ let problem_cumulative_time = ref 0.0
 let problem_overshot = ref 0.0
 let schedule_start = ref 0.0
 
+(*When the whole run must be over, set from -t before anything is read.  The
+  slice deadline cannot cover the work that happens before the first slice
+  exists -- reading the problem and indexing it, which on a problem with deep
+  terms takes minutes -- and that work is what made "-t 10" end the run
+  neither at ten seconds nor at all.*)
+let global_deadline = ref 0.0
+
 exception STRATEGY_TERMINATED
 
 (*time left for this schedule*)
@@ -112,8 +119,15 @@ let check_timeout () =
           " pct=" ^ string_of_float !problem_cumulative_time ^ "\n"));
           Util.sysoutf 2 (fun () -> ("time_left: " ^ string_of_float (time_remaining_of_schedule ()) ^ "\n"))
         end;
+      (*No schedule, no deadline.  schedule_start is the absolute time a slice
+        must end by, and it is zero until a slice is created, which makes the
+        remaining time hugely negative.  Callers that run before the first
+        slice -- reading the problem, choosing the strategies -- would then be
+        cut off at once.  Only a schedule that exists can expire.*)
       (*FIXME make the "0.1" constant a parameter?*)
-      if time_remaining_of_schedule () -. 0.1 < 0. then raise STRATEGY_TERMINATED
+      if (!global_deadline > 0.0 && Unix.gettimeofday () > !global_deadline)
+         || (!schedule_start > 0.0 && time_remaining_of_schedule () -. 0.1 < 0.)
+      then raise STRATEGY_TERMINATED
     end
 
 type szs_status =
@@ -687,7 +701,7 @@ let print_actpas_sets lightest lightest' ignored_clauses st =
   let loopK = "Loop" in
   let lastloop_name = loopK ^ string_of_int !lastloop_no in
   let curloop_name = loopK ^ string_of_int st.loop_count in
-    Util.sysout 0 ("\"" ^ curloop_name ^ "\"[\n");
+    Util.sysoutf 0 (fun () -> ("\"" ^ curloop_name ^ "\"[\n"));
     Util.sysout 0 ("  shape = record\n");
     Util.sysoutf 0 (fun () -> ("  label = \"<head>" ^ loopK ^ " " ^ string_of_int st.loop_count ^ " | {" ^
       String.concat " | "

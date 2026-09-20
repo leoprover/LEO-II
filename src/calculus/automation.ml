@@ -44,7 +44,7 @@ let exhaustive_to_bound (bound:int) (r:(cl_clause list -> state -> cl_clause lis
       then res
       else exhaustive_to_bound' r res st  bound (depth + 1)
     with
-    | Failure str -> Util.sysout 0 ("***** Failure "^str^" *****"); raise (Failure str)
+    | Failure str -> Util.sysoutf 0 (fun () -> ("***** Failure "^str^" *****")); raise (Failure str)
   in
   exhaustive_to_bound' r cll st bound 1
 
@@ -57,7 +57,7 @@ let rec exhaustive (r:(cl_clause list -> state -> cl_clause list)) (cll:cl_claus
     then result
     else exhaustive r result st
   with
-  | Failure str -> Util.sysout 0 ("***** Failure "^str^" *****"); raise (Failure str)
+  | Failure str -> Util.sysoutf 0 (fun () -> ("***** Failure "^str^" *****")); raise (Failure str)
 
 
 
@@ -254,7 +254,7 @@ let atp_infile (st: state) =
     if Sys.file_exists st.origproblem_filename
     then !tmp_directory ^ "/" ^ Filename.basename st.origproblem_filename ^ ".atp_in"
     else !tmp_directory ^ "/atp_in" in
-  (* Util.sysout 0 ("\n ATP-IN-FILE: "^fn^"\n"); *)
+  (* Util.sysoutf 0 (fun () -> ("\n ATP-IN-FILE: "^fn^"\n")); *)
   fn
 
 let atp_outfile (st: state) =
@@ -262,7 +262,7 @@ let atp_outfile (st: state) =
     if Sys.file_exists st.origproblem_filename
     then !tmp_directory ^ "/" ^ Filename.basename st.origproblem_filename ^ ".atp_out"
     else !tmp_directory ^ "/atp_out" in
-  (* Util.sysout 0 ("\n ATP-OUT-FILE: "^fn^"\n"); *)
+  (* Util.sysoutf 0 (fun () -> ("\n ATP-OUT-FILE: "^fn^"\n")); *)
   fn
 
 let atp_cmds = ref []
@@ -317,7 +317,7 @@ let atp_versions () =
     try
       let version_param = List.assoc prover_name atp_version_parameters
       in
-        Util.sysout 0 (prover_name ^ ": ");
+        Util.sysoutf 0 (fun () -> (prover_name ^ ": "));
         ignore(Util.command(prover_path ^ " " ^ version_param));
     with
       Not_found ->
@@ -367,7 +367,7 @@ let oracle_atp_call desired_prover success_string friendly_atp_name args null_st
   let drop_stderr = if null_stderr then " 2> /dev/null" else "" in
   let file_out_used_leoclauses = (atp_outfile st ^ "_used_clauses") in
     Util.register_tmpfiles [file_out; file_out_used_leoclauses];
-    Util.sysout 1 ("(" ^ file_in ^ ")");
+    Util.sysoutf 1 (fun () -> ("(" ^ file_in ^ ")"));
     flush stdout;
     ignore(Util.command (prover ^ " " ^ args ^ " " ^ file_in ^ " > " ^ file_out ^ drop_stderr));
     Util.sysout 1 ("]");
@@ -432,7 +432,7 @@ let atp_mains =
       let file_in = "PIPE" in
       let file_out_used_leoclauses = atp_outfile st ^ "_used_clauses" in
       Util.register_tmpfiles [file_out_used_leoclauses];
-      if Build_config.debug then Util.sysout 1 ("E(" ^ file_in ^ ")");
+      if Build_config.debug then Util.sysoutf 1 (fun () -> ("E(" ^ file_in ^ ")"));
       flush stdout;
       let output_options = (*E should not produce a proof if it's not needed*)
         if st.flags.proof_output > 1 then
@@ -443,7 +443,7 @@ let atp_mains =
           string_of_int st.flags.atp_timeout ^ " " ^ unix_options in
       let call_string = (prover ^ " " ^ options ^ " " ^ output_options) in
       let fo_clauses = get_fo_clauses st in
-      if Build_config.debug then Util.sysout 1 ("\nCall string:"^call_string^"\n");
+      if Build_config.debug then Util.sysoutf 1 (fun () -> ("\nCall string:"^call_string^"\n"));
       (*FIXME replacing "ignore(Util.waitfor_spawn call_string);"
               with Sys.command below, due to issues on MacOSX*)
       if Build_config.debug then Util.sysoutf 1 (fun () -> ("\n**Sent to E**\n" ^ fo_clauses ^ "**(End of input to E)**\n"));
@@ -570,7 +570,7 @@ let atp_mains =
        (
 	 Util.sysoutf 0 (fun () -> ("\n Trying to integrate the Proof Object of E into the LEO-II proof; this may take a while ..."));
          let rec adjust_e_clause_identifiers num protocol_string =
-           Util.sysout 1 ("\n Num :" ^ string_of_int num); Util.sysout 1 ("\n Hallo1 :" ^ protocol_string);
+           Util.sysoutf 1 (fun () -> ("\n Num :" ^ string_of_int num)); Util.sysoutf 1 (fun () -> ("\n Hallo1 :" ^ protocol_string));
            let test =
              try let _ = search_forward (regexp "\\(c_[0-9]*_\\)\\([0-9]*\\)") protocol_string 0 in true
              with Not_found -> false in
@@ -607,7 +607,7 @@ let atp_mains =
 			      [numstr; numliststr; str] ->
 				(let _ = Util.sysoutf 1 (fun () -> ("\n hallo: " ^ numstr ^ " " ^ numliststr ^ " " ^ str)) in
 				 let helplist =
-				   List.map (fun x -> let _ = Util.sysout 1 (" ns:" ^ x) in (int_of_string x, ""))
+				   List.map (fun x -> let _ = Util.sysoutf 1 (fun () -> (" ns:" ^ x)) in (int_of_string x, ""))
 				     (split (regexp_string ",")
 					(global_replace (regexp_string "[") ""
 					   (global_replace (regexp_string "]") "" numliststr))) in
@@ -645,7 +645,7 @@ let atp_mains =
       let file_out = atp_outfile st in
       let file_out_used_leoclauses = (atp_outfile st ^ "_used_clauses") in
       Util.register_tmpfiles [file_out; file_out_used_leoclauses];
-      Util.sysout 1 ("SPASS(" ^ file_in ^ ")");
+      Util.sysoutf 1 (fun () -> ("SPASS(" ^ file_in ^ ")"));
       flush stdout;
       let options = "-TPTP -PGiven=0 -PProblem=0 -DocProof -TimeLimit=" ^ string_of_int st.flags.atp_timeout in
       ignore(Util.command (prover ^ " " ^ options ^ " " ^ file_in ^ " > " ^ file_out));
@@ -678,7 +678,7 @@ let atp_mains =
       let file_in = atp_infile st in
       let file_out = atp_outfile st in
       Util.register_tmpfile file_out;
-      Util.sysout 1 ("Gandalf(" ^ file_in ^ ")");
+      Util.sysoutf 1 (fun () -> ("Gandalf(" ^ file_in ^ ")"));
       flush stdout;
       let _ = Util.command (prover ^ " " ^ file_in ^ " > " ^ file_out) in
       Util.sysout 1 ("]");
@@ -704,7 +704,7 @@ let atp_mains =
       let file_in = atp_infile st in
       let file_out = atp_outfile st in
       Util.register_tmpfile file_out;
-      Util.sysout 1 ("Vampire(" ^ file_in ^ ")");
+      Util.sysoutf 1 (fun () -> ("Vampire(" ^ file_in ^ ")"));
       flush stdout;
       let _ = Util.command (prover ^ " --mode casc -t " ^ string_of_int st.flags.atp_timeout ^ " " ^ file_in ^ " > " ^ file_out) in
       Util.sysout 1 ("]");
@@ -746,7 +746,7 @@ let atp_mains =
       Util.sysoutf 1 (fun () -> ("\n*** TPTP2X translation written to file  "^file_in_2^" ***\n "));
       let _ = Sys.command ("cat "^file_in_2) in
       flush stdout;
-      Util.sysout 1 ("[SPASS("^file_in_2^")");
+      Util.sysoutf 1 (fun () -> ("[SPASS("^file_in_2^")"));
       flush stdout;
       let _ = Sys.command ("sed -e 's/$false/false/g' < "^file_in_2^" > "^file_in_2^"clean && mv "^file_in_2^"clean "^file_in_2) in
       let _ = Sys.command (prover^" -DocProof "^file_in_2^" > "^file_out) in
@@ -754,7 +754,7 @@ let atp_mains =
       flush stdout;
       let res_string = read_file file_out in
       Util.sysout 2 res_string;
-      Util.sysout 2 ("\n*** End of file "^file_out^" ***\n");
+      Util.sysoutf 2 (fun () -> ("\n*** End of file "^file_out^" ***\n"));
       flush stdout;
       Util.try_delete_file file_out;
       Util.try_delete_file ((!tmp_directory)^"/donotmoveme");
@@ -844,7 +844,7 @@ let call_fo_atp_help (st:state) (prover:string)
                     (*Link the specific clauses used by the external prover with the
                       conclusion it derived*)
                     let clauses_number_and_strings =
-                      List.map (fun intstr -> let _ = (Util.sysout 1 ("\nDEBUG: " ^ intstr)) in (int_of_string intstr, "")) cl_list
+                      List.map (fun intstr -> let _ = (Util.sysoutf 1 (fun () -> ("\nDEBUG: " ^ intstr))) in (int_of_string intstr, "")) cl_list
                     in
                       ignore(mk_clause [] (inc_clause_count st) []
                                ("fo_atp_" ^ prover, clauses_number_and_strings, "") DERIVED st)

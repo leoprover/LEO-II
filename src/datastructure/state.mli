@@ -11,6 +11,7 @@ val sys_time_offset : float ref
 val problem_cumulative_time : float ref
 val problem_overshot : float ref
 val schedule_start : float ref
+val global_deadline : float ref
 
 exception STRATEGY_TERMINATED
 

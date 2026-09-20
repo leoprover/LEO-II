@@ -384,9 +384,30 @@ let execute_conf () =
               behaviour at long timeouts unchanged.*)
             let slices = effective_slices global_conf.global_timeout in
             let timeslice = max 1 (global_conf.global_timeout / slices) in
+            (*The clock starts here, before the problem is read.  Reading and
+              indexing it happens before any slice exists and can take longer
+              than the whole limit, and until this was set nothing could stop
+              it.*)
+            State.global_deadline :=
+              Unix.gettimeofday () +. float_of_int global_conf.global_timeout;
+            (*And a real alarm as the backstop.  A deadline only helps where
+              something reads it, and the places that do not are not a fixed
+              list: indexing the problem, normalising a formula, whatever is
+              added next.  A signal arrives wherever the prover happens to be,
+              so the limit holds without every loop having to know about it.
+              The grace is what a run needs to report its own status.*)
+            ignore
+              (Unix.setitimer Unix.ITIMER_REAL
+                 {Unix.it_value = float_of_int (global_conf.global_timeout + 5);
+                  Unix.it_interval = 2.0});
             let schedules =
-              take_upto slices
-                (Strategy_scheduling.compute_strategies global_conf probfilename)
+              try
+                take_upto slices
+                  (Strategy_scheduling.compute_strategies global_conf probfilename)
+              with State.STRATEGY_TERMINATED ->
+                (*Out of time before a single strategy could be chosen.*)
+                set_current_success_status None Timeout;
+                []
             in
               Queue.clear global_conf.schedules;
               if Build_config.debug then Util.sysoutf 2 (fun () -> ("Duration of slices: " ^ string_of_int timeslice));
@@ -791,6 +812,14 @@ let leo_main () =
           the write fails as an ordinary error and the run ends with a status
           like any other.*)
         ignore(Sys.signal Sys.sigpipe Sys.Signal_ignore);
+        (*The alarm above lands here: say the run timed out and leave, the way
+          the CPU-limit signal already does.*)
+        ignore(Sys.signal Sys.sigalrm
+                 (Sys.Signal_handle
+                    (fun _ ->
+                       set_current_success_status None Timeout;
+                       cleanup ();
+                       raise (Termination None))));
         ignore(Sys.signal Sys.sigquit
                  (Sys.Signal_handle
                     (fun _ ->
@@ -825,7 +854,7 @@ let leo_main () =
         | Termination maybe_st ->
             (*Some unplanned exits pass through here: e.g. timeouts, errors*)
             begin
-              Util.sysout 0 (State.szs_result maybe_st ^ "\n");
+              Util.sysoutf 0 (fun () -> (State.szs_result maybe_st ^ "\n"));
               exit (szs_exitcode ())
             end
         | e ->
@@ -838,7 +867,7 @@ let leo_main () =
                 prerr_endline ("\nError occurred:" ^ Printexc.to_string e);
                 prerr_endline (Printexc.get_backtrace ())
               end;
-            Util.sysout 0 (State.szs_result None ^ "\n");
+            Util.sysoutf 0 (fun () -> (State.szs_result None ^ "\n"));
             exit (szs_exitcode ())
     end;
     if not global_conf.interactive then

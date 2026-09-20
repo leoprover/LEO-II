@@ -94,6 +94,7 @@ val output_debug : string -> unit
 
 val protocol_init : unit -> unit
 
+val protocol_wanted : state -> bool
 val add_to_protocol : protocol -> state-> unit
 
 val print_protocol : unit -> unit

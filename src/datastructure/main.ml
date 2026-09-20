@@ -80,9 +80,16 @@ let protocol_to_string (p:protocol) =
   | (cl_int,info,lits_string) -> 
       ("\n"^(string_of_int cl_int)^": "^lits_string^"  ---  "^(cl_info_to_string info))
 
+(*Is anything going to read the proof protocol?  Nothing does unless proof or
+  protocol output was asked for, and rendering a clause for it is not cheap:
+  every free variable with its type, every literal.  Callers ask first now.*)
+let protocol_wanted (st:state) =
+  st.flags.proof_output > 0 || st.flags.protocol_output
+
 let add_to_protocol (p:protocol)  (st:state) = 
-  Util.sysout 3 ("\n prot:: "^(protocol_to_string p));
-  if st.flags.proof_output > 0 || st.flags.protocol_output then protocol := !protocol @ [p] else ()
+  (*A thunk: this line built its string whatever the debug level was.*)
+  Util.sysoutf 3 (fun () -> ("\n prot:: "^(protocol_to_string p)));
+  if protocol_wanted st then protocol := !protocol @ [p] else ()
 
 let protocol_to_tstp_string (p:protocol) (st:state) =
   let intstringlist_to_string_wo_brackets intstring_list =
@@ -620,7 +627,7 @@ let rec translate_term_2 term argtype =
 	      "leoTi("^abs_string^"("^varlist_str^")"^","^ty^")" 
 	in
 	  Util.sysoutf 3 (fun () -> ("\n Abstr: "^(Term.to_string  (Abstr(x1,tp,t1)))));
-	  Util.sysout 3 ("\n Trans: "^res);
+	  Util.sysoutf 3 (fun () -> ("\n Trans: "^res));
 	  res
        )
   | Appl(t1,t2) -> 
@@ -681,7 +688,7 @@ let cl_clause_to_fof_simple (clause:cl_clause) (st:state) =
   let rec appl_to_fof_simple  (term:term) = 
     Util.sysoutf 5 (fun () -> ("\n appl_to_fof_simple: "^(Term.to_string term)));
     let rec help (t:term) =
-    Util.sysout 5 ("\n  help: "^(Term.to_string t));
+    Util.sysoutf 5 (fun () -> ("\n  help: "^(Term.to_string t)));
       match t with 
 	| Appl(Symbol s,t1) -> 
           if is_special_symbol s
@@ -706,7 +713,7 @@ let cl_clause_to_fof_simple (clause:cl_clause) (st:state) =
           else s
 	| _ -> raise (Failure "fof translation error")
     in
-      Util.sysout 5 ("\n res: "^res);
+      Util.sysoutf 5 (fun () -> ("\n res: "^res));
       res
   in
   let rec term_to_fof_simple  (term:term) = 
@@ -973,8 +980,11 @@ let rec mk_clause (litlist : role lit_literal list) (cl_number : int)
     if litlist = [] then
       let newlitlist = [lit_mk_pos_literal st.signature (Explicit (Symbol cfalse))] in
       let newclause = cl_mk_clause newlitlist cl_number free_vars info origin in
-        add_to_protocol (cl_number, info, quantified_litlist_string newlitlist) st;
-        add_to_protocol (cl_number + 1, ("dummyTSTP", [(cl_number, "")], ""), "$false") st;
+        if protocol_wanted st then
+          begin
+            add_to_protocol (cl_number, info, quantified_litlist_string newlitlist) st;
+            add_to_protocol (cl_number + 1, ("dummyTSTP", [(cl_number, "")], ""), "$false") st
+          end;
         ignore(set_empty_clauses st (newclause :: st.empty_clauses));
         begin
           match global_conf.operating_mode with
@@ -984,8 +994,12 @@ let rec mk_clause (litlist : role lit_literal list) (cl_number : int)
         raise EMPTYCLAUSE_DERIVED
     else
       let newclause = cl_mk_clause litlist cl_number free_vars info origin in
-        add_to_protocol (cl_number, info, quantified_litlist_string litlist) st;
-        Util.sysout 2 (string_of_int st.clause_count ^ " ");
+        (*The rendering is the expensive part of making a clause -- over half
+          the run on some problems -- and it is thrown away unless someone is
+          going to read it.*)
+        if protocol_wanted st then
+          add_to_protocol (cl_number, info, quantified_litlist_string litlist) st;
+        Util.sysoutf 2 (fun () -> (string_of_int st.clause_count ^ " "));
         if List.for_all (fun l -> is_flexflex_unilit l) litlist then
           mk_clause [] (inc_clause_count st) []
             ("flexflex", [(newclause.cl_number, "")], "") origin st
@@ -1001,7 +1015,15 @@ let rec mk_clause (litlist : role lit_literal list) (cl_number : int)
 
 (* index with role *)
 
+(*Indexing is not free and nothing above it looks at the clock.  The position
+  of a subterm is a list, one element per step into the term, and it is the key
+  of a hashtable, so comparing keys costs their length; on a problem with deep
+  terms this was 98% of the run.  With no check here a single call to index a
+  clause list ran for minutes, and "-t 10" ended the run neither at ten seconds
+  nor at all -- the clock is only read between inference steps, and this is not
+  one.*)
 let index_clause_with_role (cl:cl_clause) (st:state) =
+  State.check_timeout ();
   let lit_index_with_role (lit:role lit_literal) (role:role) (st:state) = index_with_role st.index lit.lit_term role in
   for i=0 to (Array.length cl.cl_litarray) - 1 do
     let lit = (Array.get cl.cl_litarray i) in

@@ -422,7 +422,7 @@ let analysis (st : State.state) : (string * af) list -> decoration_pred = fun cl
            ignore(Minisatinterface.minisat_addClause ()))
         prob;
       let result = Minisatinterface.minisat_search () in
-        if Build_config.debug then Util.sysout 1 ("; mono=" ^ string_of_bool result);
+        if Build_config.debug then Util.sysoutf 1 (fun () -> ("; mono=" ^ string_of_bool result));
         result in
   let types =
     Signature.all_fixed_basetypes st.signature

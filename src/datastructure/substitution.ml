@@ -102,7 +102,7 @@ let typed_copy idx a b ty1 env =
     | Bound_node (ty,idx) -> "bound("^(Hol_type.to_hotptp ty)^","^(string_of_int idx)^")"
   in
   Util.sysout 3 "generate typed copy for:\n";
-  Util.sysout 3 ((ns (nstruct idx a))^"\n");*)
+  Util.sysoutf 3 (fun () -> ((ns (nstruct idx a))^"\n"));*)
   match env with
     Env (occs,args,scope,shift,offset) -> 
   match (nstruct idx a),args with
@@ -121,7 +121,7 @@ let typed_copy idx a b ty1 env =
 (* let mv = ref ""*)
 
 let rec insert_arg_f idx s t env1 env2 t2 =
-(*  Util.sysout 3 ((!mv)^"Insert-Arg-Function\n");*)
+(*  Util.sysoutf 3 (fun () -> ((!mv)^"Insert-Arg-Function\n"));*)
   match (env1,env2) with
     (Env (occs1,args1,scope1,shift1,offset1),Env (occs2,args2,scope2,shift2,offset2)) ->
       apply_subst' idx s t occs1 args2 scope2 (shift1 + (scope2-scope1)) offset1
@@ -142,7 +142,7 @@ and subst_occs idx s t =
   List.rev (List.map (fun (a,b) ->  ((subst_repl_f idx s a b),(occurrences t a idx))) s)
 
 and rebuild_appl idx s t args env =
-(*  Util.sysout 3 ((!mv)^"rebuild appl\n");*)
+(*  Util.sysoutf 3 (fun () -> ((!mv)^"rebuild appl\n"));*)
   match args,env with
     [],_  -> t
   | (argf,_)::r,Env (occs,_,scope,shift,offset) -> 
@@ -152,8 +152,8 @@ and rebuild_appl idx s t args env =
 and apply_subst' idx s t occs args scope shift offset =
 (*  Util.sysoutf 3 (fun () -> ((!mv)^"subst: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n"));
   Util.sysoutf 3 (fun () -> ((!mv)^"  args: "^(string_of_int (List.length args))));
-  Util.sysout 3 (", scope: "^(string_of_int scope));
-  Util.sysout 3 (", shift: "^(string_of_int shift)^"\n");
+  Util.sysoutf 3 (fun () -> (", scope: "^(string_of_int scope)));
+  Util.sysoutf 3 (fun () -> (", shift: "^(string_of_int shift)^"\n"));
   let mv_old=(!mv) in
   mv:="|"^(!mv);*)
 (*  Util.sysoutf 3 (fun () -> ("subst': "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n"));
@@ -170,7 +170,7 @@ and apply_subst' idx s t occs args scope shift offset =
   | (Appl_node(_,_),[],_) -> rebuild_appl idx s (boundvarshift idx t shift offset) args (Env (occs,args,scope,shift,offset))
   | (_,_,_) ->
   match (next_data occs) with
-    WithData (f,d) -> (*Util.sysout 3 ((!mv)^"replace\n");*)
+    WithData (f,d) -> (*Util.sysoutf 3 (fun () -> ((!mv)^"replace\n"));*)
                       f (Env (occs, args, scope, shift, offset)) t
   | NoData ->
   match nodestruct with
@@ -190,8 +190,8 @@ and apply_subst' idx s t occs args scope shift offset =
   Util.sysoutf 3 (fun () -> ((!mv)^"ret:   "^(Term.to_string (Termset.retrieve idx.termbase t_new))^"\n"));
   Util.sysoutf 3 (fun () -> ((!mv)^"  from: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n"));
   Util.sysoutf 3 (fun () -> ((!mv)^"  args: "^(string_of_int (List.length args))));
-  Util.sysout 3 (", scope: "^(string_of_int scope));
-  Util.sysout 3 (", shift: "^(string_of_int shift)^"\n");*)
+  Util.sysoutf 3 (fun () -> (", scope: "^(string_of_int scope)));
+  Util.sysoutf 3 (fun () -> (", shift: "^(string_of_int shift)^"\n"));*)
   index_node t_new idx;
 (*  Util.sysout 3 "indexed\n";
   Util.sysoutf 3 (fun () -> ("    --> "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n[\n"));*)
@@ -204,7 +204,7 @@ let apply_subst idx s t =
   try
   let occs = subst_occs idx s t in
   apply_subst' idx s t occs [] 0 0 0
-  with e -> Util.sysout 3 ((Printexc.to_string e)^"\n");
+  with e -> Util.sysoutf 3 (fun () -> ((Printexc.to_string e)^"\n"));
   Util.sysoutf 3 (fun () -> ("subst: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n[\n"));
   List.iter (fun (a,b) -> Util.sysoutf 3 (fun () -> ((Term.to_string (Termset.retrieve idx.termbase a))^"/"^(Term.to_string (Termset.retrieve idx.termbase b))^",\n")))
             s;

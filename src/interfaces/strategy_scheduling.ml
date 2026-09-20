@@ -20,7 +20,7 @@ exception STRATEGY of string
   from Unknown*)
 let rec execute_commands cmds =
   let execute cmd =
-    Util.sysout 1 ("\nLEO-II: " ^ cmd);
+    Util.sysoutf 1 (fun () -> ("\nLEO-II: " ^ cmd));
     Cmdline.execute_command cmd in
   match cmds with
       [] -> raise (STRATEGY "Empty strategy")
