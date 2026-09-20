@@ -16,7 +16,7 @@ let rev =
   if Build_config.revision = "" then "" else "(" ^ Build_config.revision ^ ")"
 
 let version () =
-  print_endline ("LEO-II version v1.9.6 " ^ rev ^ " \
+  print_endline ("LEO-II version v2.0 " ^ rev ^ " \
   (compiled on " ^ Sys.os_type ^ " with OCaml-" ^ Sys.ocaml_version ^ ")");
   if State.state_initialize.flags.verbose then Automation.atp_versions ()
 
@@ -54,6 +54,8 @@ type arg =
   | TRANSLATION of string
   | UNFOLDDEFSEARLY
   | UNFOLDDEFSLATE
+  | DEFSASRULES
+  | ATPMAXCLAUSES of int
   | VERBOSE
   | VERSION
   | ORDERING of string
@@ -69,8 +71,9 @@ let help () = print_string ("\
                                 (overrides the .leoatprc file, option can be used repeatedly)\n \
      --atprc FILE               Set ATP config file\n \
      --cores N                  Run N portfolio branches in parallel, one per core,\n \
-                                and answer with the first that succeeds\n \
-     Default: 1 (no parallelism; the branches are listed at portfolio_branches)\n \
+                                and answer with the first that succeeds.\n \
+                                0 (or \"auto\") takes the whole machine.\n \
+     Default: 1, a single strategy (the branches are at portfolio_branches)\n \
      --atptimeout N, -at N      Set the ATPtimeout (calls to E) to N seconds\n \
      --atpfrequency N, -af N    Call the first-order prover every N iterations\n \
                                 Default: 30s sec\n \
@@ -112,6 +115,9 @@ let help () = print_string ("\
      --tmp PATH, -tmp PATH      Set path for temporary files\n \
      --translation TRANSLATION  Use TRANSLATION into FOL\n\tAvailable translations: " ^
                               String.concat ", " (List.map Translation_general.print_translation Translation_general.fo_translations) ^ "\n \
+     --atpmaxclauses N          Send at most N clauses to the first-order prover \n \
+     (0 = all of them, the default) \n \
+     --defsasrules              Keep definitions folded and add them as equations \n \
      --unfolddefsearly, -ude    Prefer early unfolding of definitions \n \
      --unfolddefslate, -udl     Prefer late unfolding of definitions \n \
      --unidepth N, -u N         Set the maximal (pre-)unification depth to N\n \
@@ -223,6 +229,10 @@ let rec parse_cl cs ps =
     | "-ude" :: xs
     | "--unfolddefsearly" :: xs ->
         parse_cl xs (UNFOLDDEFSEARLY :: ps)
+    | "--defsasrules" :: xs ->
+        parse_cl xs (DEFSASRULES :: ps)
+    | "--atpmaxclauses" :: xs ->
+        parse_cl (tl xs) (ATPMAXCLAUSES (get_cl_int (hd cs) xs) :: ps)
     | "-udl" :: xs
     | "--unfolddefslate" :: xs ->
         parse_cl xs (UNFOLDDEFSLATE :: ps)
@@ -573,6 +583,12 @@ let rec process args = match args with
   | UNFOLDDEFSEARLY :: args ->
       ignore(State.set_flag_unfold_defs_early State.state_initialize true);
       process args
+  | ATPMAXCLAUSES n :: args ->
+      ignore(State.set_flag_atp_max_clauses State.state_initialize n);
+      process args
+  | DEFSASRULES :: args ->
+      ignore(State.set_flag_defs_as_rules State.state_initialize true);
+      process args
   | UNFOLDDEFSLATE :: args ->
       ignore(State.set_flag_unfold_defs_early State.state_initialize false);
       process args
@@ -610,20 +626,51 @@ let rec process args = match args with
   and 20 of the 126 that the default misses.  As a default it is a disaster;
   as a sibling it is the most valuable branch there is.
 
-  Measured on those 294 problems at ten seconds, as the union over branches:
-
-    1 branch  166     2 branches  182     3 branches  188     4 branches  190
-
   A branch is this same binary re-executed with different flags, so every
   branch takes the ordinary code path and the soundness of the whole is the
   soundness of a single run.  Nothing is shared between branches but the
   answer.  The default is one core, and at one core none of this code runs,
   so single-core behaviour is unchanged -- which also keeps LEO-II comparable
-  with the single-core first-order provers it is usually measured against.*)
+  with the single-core first-order provers it is usually measured against.
+
+  The branches below are a greedy cover, computed over all 294 problems and
+  not over the ones the default misses.  That distinction is the whole
+  lesson: measured on the 120 the default misses, "-rf 1 -ns" looked like the
+  second-best branch there is; measured on all 294 it answers 105, because it
+  throws away more than it gains.  A cover over a subset silently assumes
+  every setting keeps what the default already had, and none of them do.
+
+  Thirteen settings were run one at a time over all 294 at ten seconds, one
+  core each.  What each branch adds, as the running total:
+
+    --translation fof_experiment                             181
+    -rf 1 -ns --relevancetolerance 1 -ps 0 -nux              212
+    -ns -nux                                                 216
+    -rf 1 -ns --relevancetolerance 3 -ps 0 -nux              220
+    -ns                                                      222
+
+  The plain configuration is kept as the first branch even though the cover
+  does not need it: it answers 180 on its own, it is the configuration every
+  other measurement is against, and a branch costs nothing but a core.
+
+  For scale, on the same problems and the same limit: E 3.2 answers 209 with
+  "--auto", 218 with its own schedule on one core and 226 with that schedule
+  on five; Vampire 4.8 answers 173 plainly and 184 with its portfolio on five
+  cores; Leo-III answers 160.
+
+  Every setting that helps makes the search *smaller* -- no primitive
+  substitution, no combined extensional CNF, a tighter relevance filter.  The
+  search is drowning in its own conclusions, not missing them.  Note that
+  three of these branches are incomplete configurations; see the guard in
+  interactive.ml that keeps such a branch from claiming a countermodel.*)
 let portfolio_branches =
   [| [];
-     ["--relevancefilter"; "1"];
      ["--translation"; "fof_experiment"];
+     ["--relevancefilter"; "1"; "-ns"; "--relevancetolerance"; "1";
+      "--primsubst"; "0"; "-nux"];
+     ["-ns"; "-nux"];
+     ["--relevancefilter"; "1"; "-ns"; "--relevancetolerance"; "3";
+      "--primsubst"; "0"; "-nux"];
      ["-ns"] |]
 
 (*A status that settles the problem.  Anything else (Unknown, Timeout, Error,
@@ -694,7 +741,42 @@ let rec tmp_of = function
   | _ :: xs -> tmp_of xs
   | [] -> None
 
+(*How many cores this machine reports.  There is no portable call for it, so
+  ask the system the way each system likes to be asked and believe the first
+  answer.  Anything unreadable means one core, which is the conservative
+  reading: it runs the plain configuration and nothing else.*)
+let detected_cores =
+  let ask cmd =
+    try
+      let ch = Unix.open_process_in cmd in
+      let line = try Some (input_line ch) with End_of_file -> None in
+        ignore (Unix.close_process_in ch);
+        match line with
+          | Some l -> (try Some (int_of_string (String.trim l)) with Failure _ -> None)
+          | None -> None
+    with _ -> None in
+  let rec first = function
+    | [] -> 1
+    | cmd :: rest ->
+        (match ask cmd with
+           | Some n when n > 0 -> n
+           | _ -> first rest) in
+    lazy (first ["getconf _NPROCESSORS_ONLN 2>/dev/null";
+                 "sysctl -n hw.ncpu 2>/dev/null";
+                 "nproc 2>/dev/null"])
+
+(*One core unless asked otherwise, which is how the provers LEO-II is measured
+  against behave: E's "--auto-schedule" without an argument is one core and
+  only "=N" or "=Auto" is more, and Vampire's "--cores" is 1 by default even
+  in portfolio mode, with 0 meaning the maximum.  "--cores 0" and
+  "--cores auto" follow Vampire's spelling and take the whole machine, which
+  the number of branches then clips.  Note that each branch runs a
+  first-order prover beside itself, so the whole machine means more processes
+  than cores.*)
+let all_cores () = max 1 (Lazy.force detected_cores)
+
 let rec cores_of = function
+  | "--cores" :: ("auto" | "Auto" | "0") :: _ -> Some (all_cores ())
   | "--cores" :: n :: _ -> (try Some (int_of_string n) with Failure _ -> None)
   | _ :: xs -> cores_of xs
   | [] -> None
@@ -719,9 +801,13 @@ let run_portfolio n com_line =
     Array.init n
       (fun i ->
          let argv =
+           (*"--cores 1" is not decoration: without it a branch finds no
+             "--cores" on its command line, reads the default, and forks a
+             portfolio of its own.*)
            Array.of_list
              (Sys.executable_name ::
-                (base @ portfolio_branches.(i) @ ["--tmp"; scratch.(i)])) in
+                (base @ portfolio_branches.(i) @
+                   ["--cores"; "1"; "--tmp"; scratch.(i)])) in
            match Unix.fork () with
              | 0 ->
                  (*A branch stays in the process group it was forked in.
@@ -846,7 +932,16 @@ let leo_main () =
           a fresh process running the ordinary command line, so the supervisor
           must not have started proving anything itself.*)
         (match cores_of com_line with
-           | Some n when n > 1 -> run_portfolio n com_line (*does not return*)
+           | Some n when n > 1 ->
+               (*A branch is this binary run again on the same command line,
+                 which is meaningless for anything that does not prove one
+                 problem and exit: the help screen, the version, the
+                 interactive prompt, a directory, the feature analysis.*)
+               let excluded =
+                 ["-h"; "--help"; "-v"; "--version"; "-i"; "--interactive";
+                  "-d"; "--dir"; "-s"; "--scriptmode"; "-a"; "--analyze"] in
+                 if not (List.exists (fun x -> List.mem x excluded) com_line)
+                 then run_portfolio n com_line (*does not return*)
            | _ -> ());
         let args = parse_cl (strip_cores com_line) [] in
           process args

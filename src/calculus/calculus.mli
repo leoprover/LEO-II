@@ -31,6 +31,7 @@ exception Literal_not_found
 val fold_node_exhaustively : state  -> int -> (role list) * (cl_clause list) * (cl_clause list)
 
 val unfold_defs_exhaustively : state  -> (role list) * (cl_clause list) * (cl_clause list)
+val definition_clauses : state -> cl_clause list
 
 (** Exhaustive Clause Normalisation *)
 

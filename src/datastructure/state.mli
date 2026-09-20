@@ -84,6 +84,8 @@ type flags = {
     mutable protocol_output : bool;
     mutable prim_subst : int;
     mutable unfold_defs_early : bool;
+    mutable defs_as_rules : bool;
+    mutable atp_max_clauses : int;
     mutable relevance_filter : int;
     mutable relevance_tolerance : int;
     mutable replace_leibnizEQ : bool;
@@ -231,6 +233,8 @@ val set_flag_protocol_output : state -> bool -> bool
 
 val set_flag_prim_subst : state -> int -> int
 
+val set_flag_defs_as_rules : state -> bool -> bool
+val set_flag_atp_max_clauses : state -> int -> int
 val set_flag_unfold_defs_early : state -> bool -> bool
 
 val set_flag_relevance_filter : state -> int -> int

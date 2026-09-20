@@ -280,6 +280,22 @@ let unfold_defs_exhaustively st =
 
   
 
+
+(*The defining equations of the symbols the problem declares, as clauses.
+
+  With definitions unfolded, the symbol disappears and its body is copied into
+  every occurrence; with them kept, the symbol stays and the search is given
+  "d = body" once.  The first is what makes a modal embedding's terms grow
+  without bound, and it is what the first-order prover then has to read.*)
+let definition_clauses (st:state) =
+  List.map
+    (fun (sym, (body, _)) ->
+       let eq = Appl (Appl (Symbol equality, Symbol sym), body) in
+         mk_clause [lit_mk_pos_literal st.signature (term2xterm eq)]
+           (inc_clause_count st) [] ("definition", [], "") AXIOM st)
+    (all_defined_symbols_without_logical_symbols st.signature)
+
+
 (** Clause Normalisation *)
 
 let eta_expand1 (t:term) (st:state) =

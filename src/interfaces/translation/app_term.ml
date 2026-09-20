@@ -185,16 +185,19 @@ let rec inst_type_of_term m ta =
 let rec mark_quantifiers (ta : app_term) : app_term = match ta with
     Var _ -> ta
   | Const _ -> ta
-  | (*!-quantification*)
-    App (Const ("!"(*FIXME const*), _), [Abs ([(x, ty)], t')]) ->
+  | (*quantification; "?" survives clausification whenever the quantifier
+      sits inside a term rather than at literal level, as it does when
+      definitions are kept folded*)
+    App (Const (("!" | "?") as q(*FIXME const*), _), [Abs ([(x, ty)], t')]) ->
+      let q = if q = "!" then Signature.forall else Signature.exists in
       let rest = mark_quantifiers t' in
         begin
           match rest with
               Quant (qtfr, vars, t') ->
-                if qtfr = Signature.forall
+                if qtfr = q
                 then Quant (qtfr, (x, ty) :: vars, t')
-                else Quant (Signature.forall, [(x, ty)], rest)
-            | _ -> Quant (Signature.forall, [(x, ty)], rest)
+                else Quant (q, [(x, ty)], rest)
+            | _ -> Quant (q, [(x, ty)], rest)
         end
   | App (t, ts) -> App (mark_quantifiers t, List.map mark_quantifiers ts)
   | Abs (vars, t') -> Abs (vars, mark_quantifiers t')

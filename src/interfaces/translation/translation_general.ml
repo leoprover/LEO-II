@@ -126,6 +126,15 @@ let is_uconstant strict s = (*FIXME confusing, make is_uconstant and is_iconstan
 
 (* Operations on Leo2's terms and types *)
 
+(*One name per ground function type, handed out on first sight and
+  remembered, so that the same type is always the same symbol within a run.*)
+let ground_type_names : (hol_type, string) Hashtbl.t = Hashtbl.create 32
+let ground_type_name (ty : hol_type) =
+  try Hashtbl.find ground_type_names ty
+  with Not_found ->
+    let n = "fun" ^ string_of_int (Hashtbl.length ground_type_names) in
+      Hashtbl.add ground_type_names ty n; n
+
 (*Will subsequently be used for tagging*)
 let rec type_to_term (ty : hol_type) = match ty with
     Basetype n ->
@@ -147,7 +156,22 @@ let rec type_to_term (ty : hol_type) = match ty with
         else prefix_type ^ n
       in Symbol n'
   | Funtype (ty1, ty2) ->
-      (Symbol funtype_termK $ type_to_term ty1) $ type_to_term ty2
+      (*A ground function type is a constant, not a term built from leoFt.
+
+        The tags are there to keep terms of different types apart, and one
+        name per type keeps them apart exactly as well as a tree of leoFt
+        does, while being one symbol instead of a subterm that grows with the
+        type.  It is the same encoding up to a bijective renaming of ground
+        types, so it neither adds nor removes a refutation.  What it removes
+        is weight: "leoTi(cr, leoFt(tmu, leoFt(tmu, o)))" is nine symbols of
+        which six say nothing but the type of cr, and a first-order prover
+        orders and indexes terms by exactly those symbols.  On the modal
+        embeddings here the tags were the bulk of what LEO-II sent E.
+
+        Polymorphic types keep the old shape: their tags are read back by the
+        prover as structure, and there is no one name to give them.*)
+      if Hol_type.get_polyvars ty = [] then Symbol (prefix_type ^ ground_type_name ty)
+      else (Symbol funtype_termK $ type_to_term ty1) $ type_to_term ty2
 
 let rec term_to_type (t : term) = match t with
   | Symbol n ->

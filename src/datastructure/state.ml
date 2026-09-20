@@ -207,6 +207,24 @@ type flags = {
     mutable protocol_output : bool;
     mutable prim_subst : int;
     mutable unfold_defs_early : bool;
+    (*Give a definition to the search as an equation, rather than replacing
+      every occurrence of the symbol by its body.  Unfolding is what LEO-II
+      has always done, and it is what makes the terms of a modal embedding
+      enormous: on GoedelVariantHOML3 the problem handed to the first-order
+      prover reaches 868KB, which that prover cannot read in a minute.
+      Vukmirovic et al., "Making Higher-Order Superposition Work", measure
+      the opposite on the TPTP as a whole: rewriting the definitions away in
+      preprocessing proves 1635 problems, leaving them as plain equations
+      1298.  Their benchmark is not ours -- the modal embeddings here are the
+      case their Example 2 singles out -- so this is a flag, not a default.*)
+    mutable defs_as_rules : bool;
+    (*Upper bound on how many clauses one call to the first-order prover is
+      given; 0 means "all of them", which is what Leo-II has always done.
+      A saturating prover handed 25000 clauses reads them and little else,
+      so past a few hundred the call is wasted.  Cutting the set down is
+      sound -- a refutation from a subset is a refutation -- and only the
+      cooperation's completeness suffers, which the next call repairs.*)
+    mutable atp_max_clauses : int;
     mutable relevance_filter : int;
     (*tolerance for new symbols in one round; -1 means "use the level"*)
     mutable relevance_tolerance : int;
@@ -309,6 +327,8 @@ let state_initialize =
                protocol_output = false;
                prim_subst = 3;
                unfold_defs_early = true;
+               defs_as_rules = false;
+               atp_max_clauses = 0;
                relevance_filter = 0;
                relevance_tolerance = -1;
                replace_leibnizEQ = true;
@@ -578,6 +598,14 @@ let set_flag_protocol_output (ls : state) (value : bool) =
 
 let set_flag_prim_subst (ls : state) (flag : int) =
   ls.flags.prim_subst <- flag;
+  flag
+
+let set_flag_defs_as_rules (ls : state) (flag : bool) =
+  ls.flags.defs_as_rules <- flag;
+  flag
+
+let set_flag_atp_max_clauses (ls : state) (flag : int) =
+  ls.flags.atp_max_clauses <- flag;
   flag
 
 let set_flag_unfold_defs_early (ls : state) (flag : bool) =

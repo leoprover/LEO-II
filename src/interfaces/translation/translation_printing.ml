@@ -110,6 +110,15 @@ let rec print_appterm ((tr, (fmt, _)) as cfg : Translation_general.configuration
               quantifier ^ "[" ^
                 String.concat ", " (List.map fst vars) ^ "]: " ^
                 "(" ^ print_appterm cfg t' ^ ")"
+          (*A tag could be written as one symbol per type -- "leoTi_tfun22(cr)"
+            rather than "leoTi(cr, tfun22)" -- which is the same encoding up to
+            a renaming and a third shorter.  It was implemented and measured on
+            2026-09-20, and it is worse: 171 of the 294 ontological-argument
+            problems against 183, and 210 against 222 in the portfolio.  The
+            likely reason is that it turns one frequent function symbol into
+            thirty rare ones, and a first-order prover's indexing, its term
+            order and its choice of strategy all read the signature.  Do not
+            try it again without measuring.*)
           | (TPTP_FOF, App (t, ts)) ->
                 print_appterm cfg t ^
                   if List.length ts = 0 then ""

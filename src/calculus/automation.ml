@@ -865,9 +865,45 @@ let call_fo_atp_early (st:state) (prover:string) =
 	  res
     | _ -> ()
 
+(*The clauses one call to the first-order prover is given.  Everything alive,
+  unless a cap is set: then the lightest clauses up to the cap, with a quarter
+  of the budget reserved for the conjecture's own clauses so that the goal
+  cannot be crowded out by the axioms.  Vukmirovic et al. measure the same
+  choice for Zipperposition's backend and find a *small* selection of
+  lowest-weight clauses to beat a large one (1985 problems at 16, 1919 at
+  512): the heavy clauses are the ones a first-order prover is least likely
+  to need and most likely to drown in.  Sending a subset is sound -- a
+  refutation from a subset is a refutation -- and costs only the
+  cooperation's completeness, which the next call repairs.*)
+let atp_candidates (st:state) =
+  let all = Set_of_clauses.elements (Set_of_clauses.union st.active st.passive) in
+  let cap = st.flags.atp_max_clauses in
+    if cap <= 0 || List.length all <= cap then all
+    else
+      let lightest_first =
+        List.sort
+          (fun c1 c2 ->
+             match compare c1.cl_weight c2.cl_weight with
+                 0 -> compare c1.cl_number c2.cl_number
+               | n -> n) in
+      let rec take n l =
+        if n <= 0 then []
+        else match l with [] -> [] | x :: xs -> x :: take (n - 1) xs in
+      let (conjecture, rest) =
+        List.partition (fun cl -> cl.cl_origin = CONJECTURE) all in
+      let goal = take (max 1 (cap / 4)) (lightest_first conjecture) in
+        goal @ take (cap - List.length goal) (lightest_first rest)
+
 let call_fo_atp (st:state) (prover:string) =
-  let candidate_clauses =
-    Set_of_clauses.elements (Set_of_clauses.union st.active st.passive) in
+  let candidate_clauses = atp_candidates st in
+  (*The translation caches every clause it has ever seen and hands the prover
+    the whole cache, so the cap only bites once the cache is dropped.*)
+  if st.flags.atp_max_clauses > 0 then
+    begin
+      st.fo_clauses_new <- [];
+      st.fo_clauses <- [];
+      Translation.reset_prev_fo_clauses_cache ()
+    end;
   let time_left =
     (*if we've forced an ATP timeout then regard it*)
     match State.global_conf.atp_timeout_forced with
@@ -958,7 +994,9 @@ let unfold_defs_stack (st:state) =
 *)
 
 let pre_process_1 (st:state) =
-  let (_,oldclauses,unfold_clauses) = unfold_defs_exhaustively st in
+  let (_,oldclauses,unfold_clauses) =
+    if st.flags.defs_as_rules then ([], [], definition_clauses st)
+    else unfold_defs_exhaustively st in
   output st (fun () -> ("\n0a. Defs: "^(cl_clauselist_to_protocol unfold_clauses)));
   let res_init_unfold =
     (Set_of_clauses.elements

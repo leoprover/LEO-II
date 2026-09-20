@@ -642,7 +642,10 @@ let rec pK_wrap (cfg : Translation_general.configuration) (ta : app_term) : app_
             (else throw exception -- we shouldn't be here)*)
         if check_head_const true (is_iconstant false) ta1 then
           (*at this point we have already distinguished "=" from "<=>" using proximate*)
-          if check_head_const true (eq Signature.equality) ta1 then
+          (*"!=" is a literal-level connective just like "=", so stop here
+            rather than descend into its arguments, which are terms.*)
+          if check_head_const true (eq Signature.equality) ta1
+             || check_head_const true (eq Signature.nequals) ta1 then
             ta
           else
             App (ta1, List.map (pK_wrap cfg) tas)
@@ -705,8 +708,10 @@ let rec tag_app_term (cfg : Translation_general.configuration) (d : decoration_p
                 (*if head const is appK then tag it, but don't wrap it in appK*)
                 ti_at cfg ty (ta1 $$ List.map (tagger false) tas)
               end
-            else if check_head_const true (eq Signature.equality) ta1 then
-              (*No need to handle "!=" since it has been expanded away*)
+            else if check_head_const true (eq Signature.equality) ta1
+                    || check_head_const true (eq Signature.nequals) ta1 then
+              (*"!=" behaves exactly like "=" here: its arguments are terms,
+                not formulas, so they must not be tagged at formula level*)
               begin
                 (*if ta1="=" and at_formula_level=false then = should have been proximated*)
                 if Build_config.debug then assert at_formula_level;

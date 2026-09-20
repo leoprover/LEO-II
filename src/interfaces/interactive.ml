@@ -1613,13 +1613,32 @@ let prove_help (st:state) (prover:string)  (flag:bool) =
                 st.passive
             in
               if not forbidden_fvs_in_passive &&
-                (*This next condition is a protection against wrong results,
-                  since if use_extuni=false then the prover is not extensionally complete*)
+                (*A saturated clause set is a countermodel only if the calculus
+                  that produced it is complete.  Every setting that takes a
+                  rule away takes that argument away with it, and then a
+                  saturation says nothing at all -- so each one is listed here,
+                  and the answer is Unknown rather than CounterSatisfiable.
+
+                  This is not hypothetical.  "--defsasrules" keeps the
+                  definitions folded, and on TestsHOMLinS4/EqPrimLeib, a
+                  recorded theorem, LEO-II saturated and claimed a countermodel
+                  for it.  "-nux" and "--primsubst 0" remove rules in the same
+                  way and were missing from this list, which matters more than
+                  it used to: both are portfolio branches now, and the
+                  portfolio answers with the first branch that reaches a
+                  conclusive status.*)
+                (*if use_extuni=false then the prover is not extensionally complete*)
                 st.flags.use_extuni &&
-		(*This condition similarly protects against relevance filtering, which also leads to incomleteness*)
+		(*relevance filtering likewise leads to incompleteness*)
 		st.flags.relevance_filter = 0 &&
-		(*This condition similarly protects against non-use of choice, which also leads to incomleteness*)
-		st.flags.use_choice 
+		(*as does non-use of choice*)
+		st.flags.use_choice &&
+		(*as does dropping the combined extensional CNF rule*)
+		st.flags.use_extcnf_combined &&
+		(*as does turning primitive substitution off*)
+		st.flags.prim_subst > 0 &&
+		(*as does leaving the definitions folded*)
+		not st.flags.defs_as_rules
 	      then
                 begin
                   ignore(set_flag_max_uni_depth st unidepth);
