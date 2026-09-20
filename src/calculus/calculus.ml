@@ -329,6 +329,91 @@ let skolem_term (t:term) (st:state) (free_vars:term list) =
       | _ -> raise (Calculus_failure "Skolem term failure")   
 
 
+(*The lambda abstractions a term contains, outermost first.*)
+let rec abstractions_in (t : term) =
+  match t with
+      Symbol _ -> []
+    | Appl (t1, t2) -> abstractions_in t1 @ abstractions_in t2
+    | Abstr (_, _, body) -> t :: abstractions_in body
+
+(*Gather the problem's own abstractions, by type, for instantiate_max.  Called
+  once the definitions are unfolded and before anything is normalised: the
+  body of a defined symbol is by then an abstraction in a clause, which is how
+  a problem that conjectures something about "g" offers the property g denotes.
+
+  Conjecture clauses come first, and the list is capped per type, because an
+  instance is made at every universal quantifier of that type and the cost is
+  multiplicative.  Ordering by weight after that prefers the small, which are
+  the ones a proof usually wants -- the empty property before a nest of
+  quantifiers.*)
+let collect_problem_abstractions (clauses : cl_clause list) (st : state) =
+  let of_clause cl =
+    List.concat_map
+      (fun l -> abstractions_in (xterm2term l.lit_term))
+      (Array.to_list cl.cl_litarray) in
+  let typed t =
+    try Some (Term.type_of (type_of_symbol st.signature) t, t)
+    with _ -> None in
+  let (conj, rest) = List.partition (fun cl -> cl.cl_origin = CONJECTURE) clauses in
+  let gathered =
+    List.filter_map typed
+      (List.concat_map of_clause conj @ List.concat_map of_clause rest) in
+  (*Keep the first occurrence of each abstraction, so that the conjecture's
+    own come before the axioms'.  Two abstractions that differ only in the
+    names of their bound variables are the same instantiation, and a clause
+    set offers many such: printing them with the binders numbered by depth
+    rather than named collapses them.*)
+  let alpha_key t =
+    let rec pos x = function
+        [] -> None
+      | y :: ys -> if y = x then Some 0
+                   else (match pos x ys with None -> None | Some n -> Some (n + 1)) in
+    let rec go env t =
+      match t with
+          Symbol s ->
+            (match pos s env with Some n -> "#" ^ string_of_int n | None -> s)
+        | Appl (t1, t2) -> "(" ^ go env t1 ^ " " ^ go env t2 ^ ")"
+        | Abstr (Symbol n, ty, b) ->
+            "^" ^ Hol_type.to_string ty ^ "." ^ go (n :: env) b
+        | Abstr (_, ty, b) -> "^" ^ Hol_type.to_string ty ^ ".?" ^ go env b
+    in go [] t in
+  let seen = Hashtbl.create 64 in
+  let deduped =
+    List.filter
+      (fun (_, t) ->
+         let k = alpha_key t in
+           if Hashtbl.mem seen k then false else (Hashtbl.add seen k (); true))
+      gathered in
+  (*Small first.  A binding a proof wants is usually short -- the empty
+    property, the diagonal -- while what a clause set offers in bulk is the
+    normalised body of an axiom, hundreds of symbols long and useless as an
+    instantiation.  Without this the cap is spent on the latter.*)
+  let rec size t =
+    match t with
+        Symbol _ -> 1
+      | Appl (t1, t2) -> size t1 + size t2
+      | Abstr (_, _, b) -> 1 + size b in
+  let deduped =
+    List.stable_sort (fun (_, a) (_, b) -> size a - size b) deduped in
+  let cap = st.flags.instantiate_max in
+  let count = Hashtbl.create 16 in
+  let within_cap (ty, _) =
+    let n = try Hashtbl.find count ty with Not_found -> 0 in
+      if n >= cap then false else (Hashtbl.replace count ty (n + 1); true) in
+    st.problem_abstractions <- List.filter within_cap deduped;
+    List.iter
+      (fun (ty, t) ->
+         Util.sysoutf 2
+           (fun () -> ("\n% Instantiation candidate : " ^ Term.to_string t ^
+                       " : " ^ Hol_type.to_string ty)))
+      st.problem_abstractions
+
+(*The candidates of one type, as bindings for a variable of that type.*)
+let instantiations_of_type (ty : hol_type) (st : state) =
+  if st.flags.instantiate_max <= 0 then []
+  else List.filter_map (fun (ty', t) -> if ty' = ty then Some t else None)
+         st.problem_abstractions
+
 let ext_rewrite_equation l1 l2 st = 
   let ty = type_of (im2xterm l1) in
     if ty = Signature.bt_i then raise (Failure "normalize_lit")
@@ -2367,6 +2452,52 @@ let flex_rigid (cl:cl_clause) (st:state) =
 (** The Primsubst Rule *)
 
 
+
+(*Instances of a clause, one per candidate abstraction of the type of one of
+  its free variables.
+
+  The universal variables an axiom is stated with are free variables by the
+  time a clause exists -- a clause is implicitly universally closed -- so the
+  quantifier rule never sees them and this is where they have to be reached.
+  It is done on the initial clause set, before the main loop has copied those
+  variables into descendants: one instance here becomes the whole family of
+  instances that follow from it, where the same instance made later reaches a
+  single clause.
+
+  One variable at a time, not combinations: the point is to offer a term, not
+  to enumerate a product.  The original clause is kept, so nothing is lost.*)
+let instantiate_free_vars (clauses : cl_clause list) (st : state) =
+  if st.flags.instantiate_max <= 0 || st.problem_abstractions = [] then clauses
+  else
+    let instances cl =
+      List.concat_map
+        (fun v ->
+           let ty = try Some (Term.type_of (type_of_symbol st.signature) v)
+                    with _ -> None in
+             match ty with
+                 None -> []
+               | Some ty ->
+                   List.map
+                     (fun inst ->
+                        let newlits =
+                          List.map
+                            (fun l -> substitute_lit l st [(term2xterm v, term2xterm inst)])
+                            (Array.to_list cl.cl_litarray) in
+                          mk_clause newlits (inc_clause_count st)
+                            (litlist_free_vars newlits)
+                            ("instantiate",
+                             [(cl.cl_number,
+                               "[bind(" ^ Term.to_string v ^ ", $thf(" ^
+                               Term.to_hotptp inst ^ "))]")], "")
+                            cl.cl_origin st)
+                     (instantiations_of_type ty st))
+        cl.cl_free_vars in
+    let made = List.concat_map instances clauses in
+      Util.sysoutf 2
+        (fun () -> ("\n% Instantiation: " ^ string_of_int (List.length clauses) ^
+                    " clauses, " ^ string_of_int (List.length st.problem_abstractions) ^
+                    " candidates, " ^ string_of_int (List.length made) ^ " instances"));
+      clauses @ made
 
 let prim_subst (cl:cl_clause) (st:state) =
   let find_prim_subst_vars litlist =

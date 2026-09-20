@@ -86,6 +86,7 @@ type flags = {
     mutable unfold_defs_early : bool;
     mutable defs_as_rules : bool;
     mutable atp_max_clauses : int;
+    mutable instantiate_max : int;
     mutable relevance_filter : int;
     mutable relevance_tolerance : int;
     mutable replace_leibnizEQ : bool;
@@ -124,6 +125,9 @@ type state = {
     mutable fo_clauses_new : (string * Af.af) list;
     mutable foatp_calls : int;
     mutable choice_functions : Term.term list;
+    mutable problem_abstractions : (Hol_type.hol_type * Term.term) list;
+    mutable instantiating : bool;
+    mutable instantiation_budget : int;
     mutable flags : flags;
   }
 
@@ -235,6 +239,7 @@ val set_flag_prim_subst : state -> int -> int
 
 val set_flag_defs_as_rules : state -> bool -> bool
 val set_flag_atp_max_clauses : state -> int -> int
+val set_flag_instantiate_max : state -> int -> int
 val set_flag_unfold_defs_early : state -> bool -> bool
 
 val set_flag_relevance_filter : state -> int -> int

@@ -1004,8 +1004,24 @@ let pre_process_1 (st:state) =
     (Set_of_clauses.diff (Set_of_clauses.union st.active st.passive) (list_to_set oldclauses)))) in
   List.iter (fun cl -> remove_from_active st cl) oldclauses;
   List.iter (fun cl -> remove_from_passive st cl) oldclauses;
+  (*Before anything is normalised: at this point a definition body is still an
+    abstraction sitting in a clause, and a universal variable is still one
+    variable.*)
+  (*Gather before normalising: a definition body is still one abstraction in
+    one clause here, which is how a problem that conjectures something about
+    "g" offers the property g denotes.*)
+  collect_problem_abstractions res_init_unfold st;
   let res_init =
     exhaustive (raise_to_list cnf_normalize_step) res_init_unfold st in
+  (*Instantiate after that one pass and before the main loop.  A clause is
+    implicitly universally closed, so the variables an axiom is stated with
+    are free variables by now -- which is why this cannot be done earlier --
+    and each of them still sits in the handful of clauses normalisation made,
+    not yet copied into everything the loop will derive.*)
+  let res_init =
+    match instantiate_free_vars res_init st with
+        l when l == res_init -> res_init
+      | l -> exhaustive (raise_to_list cnf_normalize_step) l st in
   index_clear_all_roles st;
   index_clauselist_with_role res_init st;
   set_active st (list_to_set res_init);

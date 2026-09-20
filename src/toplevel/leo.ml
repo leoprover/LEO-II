@@ -56,6 +56,7 @@ type arg =
   | UNFOLDDEFSLATE
   | DEFSASRULES
   | ATPMAXCLAUSES of int
+  | INSTANTIATE of int
   | VERBOSE
   | VERSION
   | ORDERING of string
@@ -115,6 +116,9 @@ let help () = print_string ("\
      --tmp PATH, -tmp PATH      Set path for temporary files\n \
      --translation TRANSLATION  Use TRANSLATION into FOL\n\tAvailable translations: " ^
                               String.concat ", " (List.map Translation_general.print_translation Translation_general.fo_translations) ^ "\n \
+     --instantiate N            Also instantiate a universal variable with up to N \n \
+                                of the problem's own lambda abstractions of its type \n \
+                                (0 = off, the default) \n \
      --atpmaxclauses N          Send at most N clauses to the first-order prover \n \
      (0 = all of them, the default) \n \
      --defsasrules              Keep definitions folded and add them as equations \n \
@@ -233,6 +237,8 @@ let rec parse_cl cs ps =
         parse_cl xs (DEFSASRULES :: ps)
     | "--atpmaxclauses" :: xs ->
         parse_cl (tl xs) (ATPMAXCLAUSES (get_cl_int (hd cs) xs) :: ps)
+    | "--instantiate" :: xs ->
+        parse_cl (tl xs) (INSTANTIATE (get_cl_int (hd cs) xs) :: ps)
     | "-udl" :: xs
     | "--unfolddefslate" :: xs ->
         parse_cl xs (UNFOLDDEFSLATE :: ps)
@@ -582,6 +588,9 @@ let rec process args = match args with
       process args
   | UNFOLDDEFSEARLY :: args ->
       ignore(State.set_flag_unfold_defs_early State.state_initialize true);
+      process args
+  | INSTANTIATE n :: args ->
+      ignore(State.set_flag_instantiate_max State.state_initialize n);
       process args
   | ATPMAXCLAUSES n :: args ->
       ignore(State.set_flag_atp_max_clauses State.state_initialize n);

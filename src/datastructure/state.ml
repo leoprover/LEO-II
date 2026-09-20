@@ -225,6 +225,39 @@ type flags = {
       sound -- a refutation from a subset is a refutation -- and only the
       cooperation's completeness suffers, which the next call repairs.*)
     mutable atp_max_clauses : int;
+    (*How many of the problem's own lambda abstractions a universal variable
+      of matching type is instantiated with, over and above the free variable
+      it is otherwise replaced by; 0 turns the rule off.
+
+      The instantiation a hard problem needs is often written in the problem.
+      GoedelVariantHOML3/NegProps conjectures that neither the empty property
+      nor "^[X]: X != X" is positive, and both abstractions stand in the
+      conjecture; .../L conjectures that being God-like is positive, and the
+      property it must instantiate with is the body of the definition of g.
+      Primitive substitution cannot reach either: it assembles bindings out of
+      connectives and quantifiers, never out of the problem's terms.  The same
+      shape recurs in Cantor's theorem, where the binding is the diagonal.
+
+      It fires once, between the first normalisation and the main loop.  Not
+      earlier: a clause is implicitly universally closed, so the variables an
+      axiom is stated with only become free variables when the clause exists.
+      Not later: by then the main loop has copied them into everything it has
+      derived, and an instance there reaches one clause of a family.  And not
+      at the quantifier during normalisation, which was tried -- normalising
+      runs to a fixpoint, every instance offers the same quantifier again, and
+      on GoedelVariantHOML3/NegProps the rule fired ten thousand times.
+
+      Measured on the 294 ontological-argument problems at ten seconds, and it
+      loses: with "-ns" 174 without it, 166 at 1, 142 at 2, 139 at 4; from the
+      plain configuration 180, 170 and 142; from the strongest portfolio
+      branch 135 and 101.  Not one of those configurations answers a problem
+      the portfolio does not already answer.  The technique is Vukmirovic et
+      al.'s Boolean instantiation and it earns its keep across the TPTP, where
+      a problem is small and needs one hard instantiation; these problems are
+      the other shape, many axioms over a tiny signature, and multiplying that
+      clause set buries the one term that would help.  Off by default, and it
+      does not belong in a portfolio branch.*)
+    mutable instantiate_max : int;
     mutable relevance_filter : int;
     (*tolerance for new symbols in one round; -1 means "use the level"*)
     mutable relevance_tolerance : int;
@@ -268,6 +301,25 @@ type state = {
     (*FIXME doesn't differentiate between provers*)
     mutable foatp_calls : int;
     mutable choice_functions : term list;
+    (*The lambda abstractions the problem itself contains, by type, gathered
+      once after the definitions are unfolded and before clause normalisation.
+      A universal variable instantiated with one of them is an instance, so
+      this can cost search and never a refutation; what it buys is the
+      instantiation a problem hands you rather than one the prover has to
+      invent.  See instantiate_max.*)
+    mutable problem_abstractions : (hol_type * term) list;
+    (*True only while the problem is first normalised.  The instantiation rule
+      is for the quantifiers the problem is written with, once; left on it
+      fires at every universal quantifier of a matching type that normalising
+      ever produces, which on GoedelVariantHOML3/NegProps was ten thousand
+      times and buried the proof.*)
+    mutable instantiating : bool;
+    (*How many quantifier positions may still be instantiated.  A budget and
+      not a gate, because normalising is run to a fixpoint: every instance is
+      itself normalised, offers the same quantifier again, and instantiates
+      again.  Without a budget that loop fired ten thousand times on one
+      problem.*)
+    mutable instantiation_budget : int;
     mutable flags : flags;
   }
 
@@ -310,6 +362,9 @@ let state_initialize =
       empty_clauses = [];
       fo_clauses = [];
       fo_clauses_new = [];
+      problem_abstractions = [];
+      instantiating = false;
+      instantiation_budget = 0;
       foatp_calls = 0;
       choice_functions = [];
       flags = {verbose = false;
@@ -329,6 +384,7 @@ let state_initialize =
                unfold_defs_early = true;
                defs_as_rules = false;
                atp_max_clauses = 0;
+               instantiate_max = 0;
                relevance_filter = 0;
                relevance_tolerance = -1;
                replace_leibnizEQ = true;
@@ -606,6 +662,10 @@ let set_flag_defs_as_rules (ls : state) (flag : bool) =
 
 let set_flag_atp_max_clauses (ls : state) (flag : int) =
   ls.flags.atp_max_clauses <- flag;
+  flag
+
+let set_flag_instantiate_max (ls : state) (flag : int) =
+  ls.flags.instantiate_max <- flag;
   flag
 
 let set_flag_unfold_defs_early (ls : state) (flag : bool) =
