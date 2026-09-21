@@ -1088,7 +1088,15 @@ let tr_add_fo_clauses (cll : Clause.cl_clause list) (st : State.state) =
             List.filter_map
               (fun (n, f) ->
                  try Some (n, render f)
-                 with e ->
+                 with
+                   (*"stop now" is not "this clause has no first-order form".
+                     Catching everything here would hold the run past its time
+                     limit and answer Error where the answer is Timeout, which
+                     is what the same pattern did in apply_subst.*)
+                   | State.Termination _
+                   | State.STRATEGY_TERMINATED
+                   | Sys.Break as e -> raise e
+                   | e ->
                    Util.sysoutf 2
                      (fun () -> ("\n% Clause " ^ n ^ " has no first-order form (" ^
                                  Printexc.to_string e ^ "); it is left out of this call."));

@@ -200,6 +200,21 @@ type flags = {
     mutable write_fo_like_clauses : bool;
     mutable pretty_print_only : bool;
     mutable fo_translation : string;
+    (*Call the first-order prover every N iterations of the main loop.
+
+      This was 1 -- after every single iteration -- and that starves the
+      higher-order search that the first-order prover depends on.  Each call
+      costs the whole second a time slice allows it, so on a ten second limit
+      ten calls exhaust the budget; on QUA006^1 the loop then ran *no*
+      iterations at all, and every one of those ten calls answered GaveUp,
+      meaning it saturated: the clauses a refutation needs had not been
+      derived yet, because deriving them is what the calls were preventing.
+
+      Measured at 5: 205 of the 294 ontological-argument problems against 180
+      at 1, and 332 of 400 small TH0 theorems drawn across the TPTP against
+      326.  Neither 3 (194 and there) nor 20 (198) does as well, and 20 spends
+      so long between calls that three quarters of the failures become
+      timeouts rather than an honest answer.*)
     mutable atp_calls_frequency : int;
     mutable atp_prover : string;
     mutable atp_timeout : int;
@@ -375,7 +390,7 @@ let state_initialize =
                write_fo_like_clauses = false;
                pretty_print_only = false;
                fo_translation = "fof_full";
-               atp_calls_frequency = 1;
+               atp_calls_frequency = 5;
                atp_prover = "none";
                atp_timeout = 25;
                proof_output = 0;

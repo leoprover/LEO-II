@@ -77,7 +77,7 @@ let help () = print_string ("\
      Default: 1, a single strategy (the branches are at portfolio_branches)\n \
      --atptimeout N, -at N      Set the ATPtimeout (calls to E) to N seconds\n \
      --atpfrequency N, -af N    Call the first-order prover every N iterations\n \
-                                Default: 30s sec\n \
+                                Default: 5\n \
      --debug N, -D N            Set debug level to N\n \
                                 (0 = no output, 1 = minimal output, 2 = full output)\n \
                                 Default: 0\n \

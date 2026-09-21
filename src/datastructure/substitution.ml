@@ -204,12 +204,26 @@ let apply_subst idx s t =
   try
   let occs = subst_occs idx s t in
   apply_subst' idx s t occs [] 0 0 0
-  with e -> Util.sysoutf 3 (fun () -> ((Printexc.to_string e)^"\n"));
-  Util.sysoutf 3 (fun () -> ("subst: "^(Term.to_string (Termset.retrieve idx.termbase t))^"\n[\n"));
-  List.iter (fun (a,b) -> Util.sysoutf 3 (fun () -> ((Term.to_string (Termset.retrieve idx.termbase a))^"/"^(Term.to_string (Termset.retrieve idx.termbase b))^",\n")))
-            s;
-  Util.sysout 3 "]\n";
-  raise (Failure "apply_subst")
+  with e ->
+  (*Report and re-raise, rather than replace.
+
+    This used to log at verbosity 3, where nobody sees it, and raise a bare
+    Failure "apply_subst" in place of whatever had happened.  That named the
+    function and not the fault, and worse, it turned exceptions that are not
+    faults at all into one: the exception LEO-II raises when its time is up
+    passes through here, and a problem whose clock ran out inside a
+    substitution was answered with SZS status Error instead of Timeout.  On
+    NUM781^4 that is exactly what it did.  An exception that means "stop now"
+    must arrive at whoever is waiting for it.*)
+  let s_of i = try Term.to_string (Termset.retrieve idx.termbase i)
+               with _ -> "<unprintable>" in
+  let bindings =
+    String.concat ", " (List.map (fun (a, b) -> s_of a ^ " := " ^ s_of b) s) in
+    Util.sysoutf 1
+      (fun () -> ("\n% apply_subst: " ^ Printexc.to_string e ^
+                  "\n%   term " ^ s_of t ^
+                  "\n%   substitution [" ^ bindings ^ "]"));
+    raise e
 
 let normalize_appl idx t1 t2 =
   apply_subst' idx [] t1 [] [] 0 0 0
