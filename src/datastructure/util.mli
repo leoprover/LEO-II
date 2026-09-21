@@ -40,6 +40,8 @@ val try_delete_file : string -> unit
 val delete_all_tmpfiles : unit -> unit
 
 val tmp_path : string ref
+(*The directory this process made for itself at startup; see util.ml.*)
+val own_tmp_dir : string
 
 val add_list : ('a, 'b) Hashtbl.t -> 'c -> 'a -> 'b -> unit
 val add_elem : ('a, 'b list) Hashtbl.t -> 'a -> 'b -> unit

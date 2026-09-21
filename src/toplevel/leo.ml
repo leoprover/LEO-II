@@ -578,6 +578,11 @@ let rec process args = match args with
          State.state_initialize localtmo); (*FIXME relevant?*)
        process args
   | TMPPATH s :: args ->
+      (*This process was given a directory, so the one it made for itself at
+        startup is not wanted.  It goes now and not at exit, because a
+        portfolio branch is killed rather than allowed to finish and never
+        reaches its exit handlers.*)
+      (try Unix.rmdir Util.own_tmp_dir with Unix.Unix_error _ -> ());
       Util.tmp_path := s;
       process args
   | TRANSLATION s :: args ->
@@ -853,6 +858,18 @@ let run_portfolio n com_line =
       children in
   let cleanup () =
     Array.iter (fun f -> try Sys.remove f with Sys_error _ -> ()) outputs;
+    (*and the branches' scratch directories, with whatever a killed branch left
+      in them.  A branch that is shot does not tidy up after itself, so this is
+      the only place it can happen; without it a run over 294 problems left
+      fifteen hundred directories in the system's temporary directory.*)
+    Array.iter
+      (fun d ->
+         (try Array.iter (fun f -> try Sys.remove (Filename.concat d f)
+                                   with Sys_error _ -> ())
+                         (Sys.readdir d)
+          with Sys_error _ -> ());
+         try Unix.rmdir d with Unix.Unix_error _ -> ())
+      scratch;
     Array.iter
       (fun d ->
          (try Array.iter (fun f -> try Sys.remove (Filename.concat d f)

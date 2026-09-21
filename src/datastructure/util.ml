@@ -35,7 +35,12 @@ let unregister_tmpfile file =
   few hundred problems, always on whichever problem was running when the
   collision happened, never reproducible on that problem alone.
 
-  The directory is removed at exit, after the files in it.*)
+  The directory is removed at exit whether it was used or not -- rmdir only
+  succeeds on an empty one, so a run told to keep its files by "--tmp" keeps
+  them and merely leaves this one, unused and empty, to be swept away.  A
+  portfolio is where that matters: each branch is told where to write, so each
+  branch's own directory stays empty, and without this a single run over 294
+  problems left seventeen hundred of them behind.*)
 let tmp_path =
   let base = try Sys.getenv "TMPDIR" with Not_found -> "/tmp" in
   let mine = Filename.concat base ("leo_" ^ string_of_int (Unix.getpid ())) in
@@ -67,9 +72,7 @@ let delete_all_tmpfiles () =
   measuring.  Only if it is empty, so that nothing is taken away from a run
   that asked for its files to be kept.*)
 let () =
-  at_exit (fun () ->
-             if !tmp_path = own_tmp_dir then
-               try Unix.rmdir own_tmp_dir with Unix.Unix_error _ -> ())
+  at_exit (fun () -> try Unix.rmdir own_tmp_dir with Unix.Unix_error _ -> ())
 
 let sysout n s =
   if n <= !debuglevel
