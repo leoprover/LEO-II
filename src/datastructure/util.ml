@@ -24,8 +24,24 @@ let unregister_tmpfile file =
     else
       prerr_endline warn_s
 
-(*FIXME can remove -tmp argument, in preference to using TMPDIR variable, like E.*)
-let tmp_path = ref (try (Sys.getenv "TMPDIR") with Not_found -> "/tmp")
+(*Scratch files go in a directory of this process's own, unless "--tmp" names
+  one.  LEO-II builds every scratch name out of the problem's basename --
+  "<tmp>/<basename>__expanded__", "<basename>.atp_in", and so on -- so two
+  LEO-IIs running at once on two problems that happen to share a basename
+  write, and then unlink, the same file, and the loser dies on a file it had
+  every reason to expect.  That is not exotic: the TPTP and any dataset of
+  variants are full of repeated basenames, and any harness that measures in
+  parallel produces exactly this.  It showed up as one SZS status Error per
+  few hundred problems, always on whichever problem was running when the
+  collision happened, never reproducible on that problem alone.
+
+  The directory is removed at exit, after the files in it.*)
+let tmp_path =
+  let base = try Sys.getenv "TMPDIR" with Not_found -> "/tmp" in
+  let mine = Filename.concat base ("leo_" ^ string_of_int (Unix.getpid ())) in
+    (try Unix.mkdir mine 0o700 with Unix.Unix_error _ -> ());
+    ref (if Sys.file_exists mine then mine else base)
+let own_tmp_dir = !tmp_path
 
 let previous_output_supressed = ref false
 let supressed_output_count = ref 0
@@ -44,6 +60,16 @@ let try_delete_file file =
 
 let delete_all_tmpfiles () =
     StringSet.iter try_delete_file !tmpfiles
+
+(*The process's own scratch directory goes at exit, however the process ends:
+  cleanup is not reached on every path out, and a directory left behind for
+  every run would fill the system's temporary directory over an afternoon of
+  measuring.  Only if it is empty, so that nothing is taken away from a run
+  that asked for its files to be kept.*)
+let () =
+  at_exit (fun () ->
+             if !tmp_path = own_tmp_dir then
+               try Unix.rmdir own_tmp_dir with Unix.Unix_error _ -> ())
 
 let sysout n s =
   if n <= !debuglevel
