@@ -3,76 +3,91 @@
 v2.0
 ----
 
-2.0 answers 221 of the 294 problems of the ontological-argument dataset at ten
-seconds given the whole machine, against 174 for 1.9.6.  On one core it
-answers about 180.  Neither figure is exact: four runs of the same binary on
-one core gave 179, 180, 180 and 183, and two portfolio runs gave 221 and 222.
-That is the spread a ten second limit has on a machine doing anything else,
-and it is worth remembering before reading much into a difference of two.
-Three things account for the improvement, and one of them is the thing
-itself.
+2.0 answers 205 of the 294 problems of the ontological-argument dataset at ten
+seconds on one core, against 174 for 1.9.6, and 224 given the whole machine.
+Neither figure is exact -- runs of the same binary vary by two or three, which
+is the spread a ten second limit has on a machine doing anything else.  Four
+things account for it, and none of them is in the calculus.
 
-**The type tags handed to the first-order prover.**  LEO-II encodes a
-higher-order problem in first-order logic by tagging every subterm with its
-type, and a type was itself a term: "mu > mu > $o" arrived as
-"leoFt(tmu, leoFt(tmu, o))".  On the modal embeddings in this dataset those
-tags were the bulk of what E received -- a single atom came to 150 characters,
-most of it type.  A ground function type is now one constant.  It is the same
-encoding up to a bijective renaming of ground types, so it neither adds nor
-removes a refutation; what it removes is weight, which a first-order prover
-carries through every ordering comparison and every index lookup.  Worth about
-six problems on one core.
+**When the first-order prover is called.**  After every iteration of the main
+loop, which is what LEO-II had always done.  Each call costs the whole second
+a time slice allows it, so ten calls exhaust a ten second limit; on QUA006^1
+the main loop then ran *no* iterations at all -- ten calls, nothing proved --
+and every one of those calls answered GaveUp, which is E saying it saturated:
+the clauses a refutation needs had not been derived, because deriving them is
+what the calls were preventing.  The partner was starving the search whose
+results it needed.  Every fifth iteration instead: 205 against 180 here, and
+332 of 400 small TH0 theorems drawn across the TPTP against 326.  This was the
+largest single change, and it was found by looking for small problems that
+another prover proves in under a second and LEO-II does not.
+
+**The type tags handed to that prover.**  LEO-II encodes a higher-order problem
+in first-order logic by tagging every subterm with its type, and a type was
+itself a term: "mu > mu > $o" arrived as "leoFt(tmu, leoFt(tmu, o))".  On the
+modal embeddings in this dataset those tags were the bulk of what E received --
+a single atom came to 150 characters, most of it type.  A ground function type
+is now one constant.  It is the same encoding up to a bijective renaming of
+ground types, so it neither adds nor removes a refutation; what it removes is
+weight, which a first-order prover carries through every ordering comparison
+and every index lookup.  Worth about six problems.
 
 Writing the tag itself as one symbol per type -- "leoTi_tfun22(cr)" rather
 than "leoTi(cr, tfun22)" -- was implemented too, and measured, and is worse:
-171 against 183.  Turning one frequent function symbol into thirty rare ones
-costs more than the third of the length it saves.  It is not in this release,
-and there is a note in translation_printing.ml saying so.
+171 against 183 at the time.  Turning one frequent function symbol into thirty
+rare ones costs more than the third of the length it saves.  There is a note
+in translation_printing.ml saying so.
 
-**The portfolio.**  "--cores" now defaults to two thirds of the cores the
-machine reports, as E's "--auto-schedule=Auto" does; "--cores 1" is the way
-back to a single strategy.  The branches are a greedy cover measured over all
-294 problems, which is not the same as a cover measured over the ones the
-default misses: on that subset "-rf 1 -ns" looks like the second-best branch
-there is, and over all 294 it answers 105, because it throws away more than it
-gains.  Thirteen settings were measured one at a time over the whole set to
-choose six branches.
+**The portfolio.**  "--cores" defaults to one, as E's "--auto-schedule" and
+Vampire's "--cores" do, and 0 takes the machine.  The branches are a greedy
+cover measured over all 294 problems, which is not the same as a cover
+measured over the ones the default misses: on that subset "-rf 1 -ns" looks
+like the second-best branch there is, and over all 294 it answers 106, because
+it throws away more than it gains.  Four branches and not six, since a branch
+runs a first-order prover beside itself and the fifth and sixth cost more in
+contention than they add.
 
-**A guard that was missing.**  LEO-II reports CounterSatisfiable when its
-clause set saturates, which is an argument only if the calculus that produced
-it is complete.  Three settings that take a rule away -- "-nux",
-"--primsubst 0" and the new "--defsasrules" -- were not in the list of
-settings that suppress the claim, and "--defsasrules" duly claimed a
-countermodel for TestsHOMLinS4/EqPrimLeib, a recorded theorem.  That matters
-more than it used to, because two of the six portfolio branches set those
-flags and the portfolio answers with the first branch to reach a conclusive
-status.  All three are in the list now.
+**A scratch directory per process.**  Every scratch name was built from the
+problem's basename, so two LEO-IIs running at once on two problems that share
+a basename wrote, and then unlinked, the same file.  The TPTP is full of
+repeated basenames and so is any dataset of variants: measured on two such
+problems run concurrently, twenty failures in thirty runs before, none after.
+It had been showing up as one SZS status Error per few hundred problems,
+always on whichever problem was running when the collision happened and never
+reproducible on that problem alone.
 
-Two repairs in the first-order translation, both reached only once a
-definition is left folded, which the new "--defsasrules" does: "!=" was
-descended into as though it were a connective, and its arguments are terms,
-not formulas; and the quantifier recognition knew "!" but never "?", so an
-existential inside a term was lambda-lifted and then typed wrong.
+Three exceptions that were being swallowed.  LEO-II reports CounterSatisfiable
+when its clause set saturates, which is an argument only if the calculus that
+produced it is complete; "-nux", "--primsubst 0" and the new "--defsasrules"
+take rules away and were not in the list of settings that suppress the claim,
+and "--defsasrules" duly claimed a countermodel for TestsHOMLinS4/EqPrimLeib,
+a recorded theorem.  apply_subst caught everything and raised a bare Failure
+in its place, including the exception that means the time is up, so a problem
+whose clock ran out inside a substitution was answered Error rather than
+Timeout.  And a clause the translation cannot render is now dropped rather
+than taking the proof attempt with it -- giving the first-order prover fewer
+clauses can cost a refutation it might have found and can never add one.
 
-New options: "--atpmaxclauses N" bounds how many clauses one call to the
-first-order prover is given, lowest weight first, with a quarter of the budget
-reserved for the conjecture's own clauses -- sending a subset is sound and
-costs only the cooperation's completeness, which the next call repairs.
+Two repairs in the translation itself, both reached only once a definition is
+left folded: "!=" was descended into as though it were a connective, and its
+arguments are terms, not formulas; and the quantifier recognition knew "!" but
+never "?", so an existential inside a term was lifted and then typed wrong.
+
+New options, none of them a default: "--atpmaxclauses N" bounds how many
+clauses one call to the first-order prover is given, lowest weight first;
 "--defsasrules" keeps definitions folded and gives the search "d = body" as an
-axiom instead.  Neither is a default; both are worth a few problems and lose
-more than they win when used alone.
+axiom instead; "--instantiate N" also instantiates a universal variable with
+the problem's own lambda abstractions.  Each is worth a few problems in the
+right place and loses more than it wins as a default; the figures are in the
+comments on the flags.
 
 For scale, on the same 294 problems at the same limit: E 3.2 answers 209 with
 "--auto", 218 with its own schedule on one core and 227 with that schedule on
-six; Vampire 4.8 answers 173 plainly and 184 with its portfolio on five cores;
-Leo-III answers 160, and 137 when given E as a backend.  LEO-II 2.0 is ahead
-of everything here except E's own schedule, which stays five problems ahead at
-equal cores.
+six; Vampire 4.8 answers 174; Leo-III answers 160.
 
-Soundness, TPTP v9.2.1, TH0 only: 470 non-theorems with the default and again
-with the portfolio, 0 proved and no contradiction against the record either
-time; 400 theorems sampled across the library, 253 proved, no countermodel
-claimed for any of them.
+Soundness, TPTP v9.2.1, TH0 only: 470 non-theorems on one core and again with
+the portfolio, 0 proved and no contradiction against the record either time;
+400 theorems sampled across the library, 259 proved, no countermodel claimed
+for any of them.
 
 v1.9.6
 ------
