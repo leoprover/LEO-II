@@ -277,6 +277,77 @@ let atp_default_cmds =
 let atp_version_parameters =
   [("e", "--version")]
 
+(*Split a comma-separated list at the commas of depth zero.*)
+let split_top_level (s : string) : string list =
+  let depth = ref 0 and start = ref 0 and acc = ref [] in
+    String.iteri
+      (fun i c ->
+         match c with
+             '(' | '[' -> incr depth
+           | ')' | ']' -> decr depth
+           | ',' when !depth = 0 ->
+               acc := String.trim (String.sub s !start (i - !start)) :: !acc;
+               start := i + 1
+           | _ -> ())
+      s;
+    List.rev (String.trim (String.sub s !start (String.length s - !start)) :: !acc)
+
+(*An answer from the first-order prover is a term over LEO-II's own encoding,
+  "leoTi(leoAt(leoTi(cf, tfun3), leoTi(ca, tent)), tmu)" for  f @ a.  Undo it:
+  drop the type tags, write applications with @, and remove the prefix that
+  the translation puts before every constant.  What cannot be read back --
+  a variable the prover left uninstantiated, a lambda-lifted symbol -- is
+  returned as it came.*)
+let untag_answer (s : string) : string =
+  let n = String.length s in
+  let pos = ref 0 in
+  let skip_ws () = while !pos < n && s.[!pos] = ' ' do incr pos done in
+  let ident () =
+    skip_ws ();
+    let start = !pos in
+      while !pos < n &&
+            (match s.[!pos] with
+                 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '$' | '\'' -> true
+               | _ -> false)
+      do incr pos done;
+      String.sub s start (!pos - start) in
+  let rec term () =
+    let head = ident () in
+      skip_ws ();
+      let args =
+        if !pos < n && s.[!pos] = '(' then
+          begin
+            incr pos;
+            let rec loop acc =
+              let a = term () in
+                skip_ws ();
+                if !pos < n && s.[!pos] = ',' then (incr pos; loop (a :: acc))
+                else ((if !pos < n && s.[!pos] = ')' then incr pos); List.rev (a :: acc))
+            in loop []
+          end
+        else [] in
+        match head, args with
+            "leoTi", [t; _] -> t
+          | "leoAt", [f; x] -> "(" ^ f ^ " @ " ^ x ^ ")"
+          | _ ->
+              let name =
+                if String.length head > 1 && head.[0] = 'c' && Char.lowercase_ascii head.[1] = head.[1]
+                then String.sub head 1 (String.length head - 1)
+                else head in
+              (*a lambda-lifted symbol stands for a term of the problem; say which*)
+              let name =
+                let starts p = String.length name >= String.length p && String.sub name 0 (String.length p) = p in
+                if starts Translation_general.prefix_ll || starts Translation_general.prefix_lf then
+                  (match Translation.lifted_term_of name with
+                       Some t -> "(" ^ t ^ ")"
+                     | None -> name)
+                else name in
+                (match args with
+                     [] -> name
+                   | _ -> name ^ "(" ^ String.concat ", " args ^ ")")
+  in
+    try (let t = term () in if !pos < n then s else t) with _ -> s
+
 let atp_config_file =
   ref (try (Sys.getenv "HOME" ^ "/.leoatprc")
        with Not_found -> !Util.tmp_path ^ "/.leoatprc")
@@ -440,7 +511,8 @@ let atp_mains =
         else "-l 0" in
       let unix_options = if Sys.os_type = "Unix" then "--memory-limit=Auto" else "" in
       let options = "--tstp-in --proof-object=1 --auto --cpu-limit=" ^ 
-          string_of_int st.flags.atp_timeout ^ " " ^ unix_options in
+          string_of_int st.flags.atp_timeout ^ " " ^ unix_options ^
+          (if !State.question_posed then " --answers=1" else "") in
       let call_string = (prover ^ " " ^ options ^ " " ^ output_options) in
       let fo_clauses = get_fo_clauses st in
       if Build_config.debug then Util.sysoutf 1 (fun () -> ("\nCall string:"^call_string^"\n"));
@@ -520,21 +592,41 @@ let atp_mains =
           Util.sysoutf 1 (fun () -> ("\n*** End of output from first-order ATP ***\n"))
         end;
       Util.try_delete_file file_out_used_leoclauses;
+      (*E says Unsatisfiable of a clause set and Theorem of a problem with a
+        conjecture, which the bundled question of a question problem is.*)
       let result =
-        Str.string_match (Str.regexp ".*SZS status Unsatisfiable.*") (eliminate_newlines res_string) 0 in
+        let flat = eliminate_newlines res_string in
+          Str.string_match (Str.regexp ".*SZS status Unsatisfiable.*") flat 0
+          || Str.string_match (Str.regexp ".*SZS status Theorem.*") flat 0 in
+      (*E reports the instances of a question's variables on one line,
+        "# SZS answers Tuple [[t1, t2]|_]"; the terms are in LEO-II's own
+        first-order encoding and are read back out of it.*)
+      if result && !State.question_posed then
+        begin
+          try
+            ignore (Str.search_forward (Str.regexp "SZS answers Tuple \\[\\[\\(.*\\)\\]|_\\]") res_string 0);
+            let inner = Str.matched_group 1 res_string in
+              State.question_answers := List.map untag_answer (split_top_level inner)
+          with Not_found -> ()
+        end;
       (*"--proofoutput 2" reports what the first-order prover contributed, and it
         reads that out of E's proof with epclextract.  When .leoatprc carries no
         epclextract entry this was the empty string, and the command handed to
         the shell began with a space: the shell reported "--tstp-out: command
         not found" into the middle of the proof output, and the reader was left
         to guess what was missing.  Without the tool there is nothing to read
-        out, so say that once and give what "--proofoutput 1" gives.*)
+        out, so say that once and give what "--proofoutput 1" gives.
+        epclextract ships with E and lives next to eprover, so when .leoatprc
+        does not name it, look there before giving up.*)
       let epclextract =
-        try List.assoc "epclextract" (!atp_cmds) with Not_found -> "" in
+        try List.assoc "epclextract" (!atp_cmds) with Not_found ->
+          let e = try List.assoc "e" (!atp_cmds) with Not_found -> "" in
+          let beside = Filename.concat (Filename.dirname e) "epclextract" in
+            if e <> "" && Sys.file_exists beside then beside else "" in
       if result && (st.flags.proof_output > 1) && epclextract = "" then
         Util.sysoutf 0
-          (fun () -> ("\n% No epclextract configured, so the first-order steps are not " ^
-                      "expanded; add an epclextract entry to .leoatprc for that.\n"));
+          (fun () -> ("\n% No epclextract found beside eprover or configured in .leoatprc, " ^
+                      "so the first-order steps are not expanded.\n"));
       if result && (st.flags.proof_output > 1) && epclextract <> "" then
 	let res_string_extract =
           let (inchan, outchan) = Unix.open_process (epclextract ^ " --tstp-out --forward-comments") in

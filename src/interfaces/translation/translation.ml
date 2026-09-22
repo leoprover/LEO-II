@@ -148,6 +148,11 @@ let formula_name ?(prefix = "") ta =
           Hashtbl.add formula_register ta_s name;
           name
 
+(*The inverse of formula_name: the term a lifted symbol stands for.  Used to
+  report an answer in which the first-order prover names such a symbol.*)
+let lifted_term_of (name : string) : string option =
+  Hashtbl.fold (fun ta_s n acc -> if n = name then Some ta_s else acc) formula_register None
+
 (*FIXME combine equivalent terms (e.g. identity function)
         rather than generate equivalent combinators*)
 (*NOTE always use proxies in combinator definitions--this is done later on by proximate*)
@@ -1042,6 +1047,43 @@ let reset_prev_fo_clauses_cache () =
   next_atp_call_is_redundant := false;
   prev_fo_clauses := []
 
+(*Question answering.  The clauses that descend from the question and still
+  carry free variables are what an answer must instantiate.  Handed to the
+  first-order prover as axioms, universally quantified, they let it refute the
+  problem without saying which instance did it.  Bundled into one formula of
+  role "question",  ?[X1..Xn]: (~C1 | ... | ~Ck)  -- the negation of the
+  conjunction of the universally closed clauses, hence equivalent -- E's answer
+  extraction reports the instantiation.  Clauses of the question without free
+  variables stay axioms; there is nothing to instantiate in them.  Only the
+  plain shape  ![vars]: body  is bundled; anything else is left as it was.*)
+let bundle_question (cll : Clause.cl_clause list) (afs : (string * af) list) =
+  let is_question n =
+    List.exists
+      (fun cl -> string_of_int cl.Clause.cl_number = n
+                 && cl.Clause.cl_origin = Clause.CONJECTURE
+                 && cl.Clause.cl_free_vars <> [])
+      cll in
+  let shape = function
+      (n, Formula (_, _, Quant ("!", vars, body))) when is_question n -> Some (vars, body)
+    | _ -> None in
+  let (qs, rest) = List.partition (fun af -> shape af <> None) afs in
+  match List.filter_map shape qs with
+      [] -> afs
+    | parts ->
+        let o = Signature.bt_o in
+        let neg ta = App (Const (Signature.neg, Hol_type.abstr_type o o), [ta]) in
+        let disj =
+          match List.map (fun (_, b) -> neg b) parts with
+              [] -> assert false
+            | t :: ts ->
+                List.fold_left
+                  (fun acc t' ->
+                     App (Const (Signature.disjunction, Hol_type.abstr_type o (Hol_type.abstr_type o o)),
+                          [acc; t']))
+                  t ts in
+        let vars = List.concat (List.map fst parts) in
+          rest @ [("question", Formula ("question", Question, Quant ("?", vars, disj)))]
+
 (*Principal function in this module: adding FO clauses to the state*)
 let tr_add_fo_clauses (cll : Clause.cl_clause list) (st : State.state) =
   let tr = read_translation st.State.flags.State.fo_translation in
@@ -1051,7 +1093,8 @@ let tr_add_fo_clauses (cll : Clause.cl_clause list) (st : State.state) =
     let cfg = (tr, List.assoc tr configurations) in
     let fo_clauses =
         List.map pre_process cll
-        |> List.concat in
+        |> List.concat
+        |> (fun afs -> if !State.question_posed then bundle_question cll afs else afs) in
     let current_clauses_labels = List.map fst fo_clauses
     in
       if Build_config.debug then

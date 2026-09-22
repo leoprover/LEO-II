@@ -171,6 +171,13 @@ let szs_status_exitcode = function
 
 let current_problem_file = ref ""
 
+(*Question answering.  A formula of role "question" asks for the instances of
+  its existential variables.  LEO-II proves it like a conjecture; the instances
+  come back from the first-order prover, which is given the clauses of the
+  question as a question of its own, and are reported beside the status.*)
+let question_posed = ref false
+let question_answers : string list ref = ref []
+
 (** Logic being processed by Leo-II **)
 
 let input_logic : string list ref = ref []
@@ -780,7 +787,10 @@ let szs_result maybe_st =
       | Some st -> ": " ^ summary_stats_string st
   in
     "% SZS status " ^ szs_status_string !current_success_status ^
-      " " ^ prob_file ^ " " ^ extra_info
+      " " ^ prob_file ^ " " ^ extra_info ^
+      (if !question_answers <> [] && !current_success_status = Theorem then
+         "\n% SZS answers Tuple [[" ^ String.concat ", " !question_answers ^ "]]"
+       else "")
 
 let szs_exitcode () =
   szs_status_exitcode !current_success_status

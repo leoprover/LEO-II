@@ -70,7 +70,19 @@ let rec execute_commands cmds =
    predict a schedule must measure each setting at the slice length it will
    actually get.
 
-   The strategies below are therefore left as they were. *)
+   The strategies below were therefore left as they were -- until the
+   first-order calls were spaced out (2.0), which made the filtered strategy
+   fast enough for a short slice.  Measured 2026-09-22 on the 294, ten seconds,
+   one core, default 205: relevance filter 1 in the second of two equal slices
+   213 (gains the five Ax2a_prime, six UniqueEss3, two GNonempty; loses five
+   PosOfGod, Th4, two Pos, which need more than five seconds unfiltered); the
+   same in the first slice 207; the filter first with a quarter of the budget
+   and the rest to the unfiltered search 217, losing two; the filter last
+   with a quarter 211.  The branch for problems with long definitions -- the
+   one the ontological-argument problems take -- now opens with that short
+   filtered slice; the slice lengths are set in leo.ml.  The filtered proofs
+   take 0.1 to 1.1 seconds; what the filter does not find fast it does not
+   find at all, and the unused time falls to the last slice. *)
 
 let compute_strategies global_conf filename : string list list =
   let body =
@@ -127,10 +139,10 @@ let compute_strategies global_conf filename : string list list =
 		              "read-problem-file " ^ filename;
 		              "prove-with-fo-atp " ^ global_conf.foatp]]
 	        | (_,_,ax,defs,false) when ax <= 100 && defs > 1000 -> 
-	            [["flag-unfold-defs-early"; (* sets it to true *)
+	            [["flag-relevance-filter 1";
 		            "read-problem-file " ^ filename;
 	              "prove-with-fo-atp " ^ global_conf.foatp]] @
-	              [["flag-unfold-defs-early"; (* sets it to false *)
+	              [["flag-relevance-filter 0";
 		              "flag-max-uni-depth 3";
 		              "read-problem-file " ^ filename;
 		              "prove-with-fo-atp " ^ global_conf.foatp]] @

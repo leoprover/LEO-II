@@ -1046,7 +1046,12 @@ let init_problem termlist sigma termroles (kind,filename) st =
   set_origproblem_all_def_names st (all_defs_names st.signature); (* destructive inserting *)
   set_index st termlist; (* destructive inserting *)
   let named_axioms = ((Hashtbl.find_all termroles "axiom")@(Hashtbl.find_all termroles "assumption")@(Hashtbl.find_all termroles "hypothesis")@(Hashtbl.find_all termroles "lemma")) in
-  let named_theorems = ((Hashtbl.find_all termroles "theorem")@(Hashtbl.find_all termroles "conjecture")) in
+  (*a question is a conjecture whose witnesses are wanted; it is proved like one,
+    and the translation hands its clauses to the first-order prover as a question*)
+  let named_questions = Hashtbl.find_all termroles "question" in
+  State.question_posed := named_questions <> [];
+  State.question_answers := [];
+  let named_theorems = ((Hashtbl.find_all termroles "theorem")@(Hashtbl.find_all termroles "conjecture")@named_questions) in
   let named_negated_conjectures = (Hashtbl.find_all termroles "negated_conjecture") in
   let axiom_clauses_pre = (List.map (fun (name,term) -> mk_clause [ lit_mk_pos_literal st.signature (term2xterm term) ] (inc_clause_count st) [] (("axiom"),[],(kind^"('"^filename^"',"^name^")")) AXIOM st) named_axioms) in
   let axiom_clauses = axiom_clauses_pre in

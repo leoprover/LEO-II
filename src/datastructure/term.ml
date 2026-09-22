@@ -182,7 +182,7 @@ let type_of sigma t =
   in try typeof sigma t with
       Failure s ->
         begin
-          Util.sysoutf 0 (fun () -> ("\nHallo: " ^ s));
+          Util.sysoutf 1 (fun () -> ("\n% Warning, type inference: " ^ s));
           failwith (" in term " ^ to_string t ^ ":\n" ^ s)
         end
 

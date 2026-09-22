@@ -52,6 +52,8 @@ type szs_status =
 
 val szs_status_string : szs_status -> string
 
+val question_posed : bool ref
+val question_answers : string list ref
 val current_problem_file : string ref
 
 (** Logic being processed by Leo-II **)

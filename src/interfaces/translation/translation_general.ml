@@ -191,6 +191,7 @@ let rec term_to_type (t : term) = match t with
 
 type af_role =
     Axiom | Plain | Conjecture | Type
+  | Question (*the bundled clauses of a question, see Translation.bundle_question*)
   | Proxy (*Currently it's assumed that proxy (but not lifted) axioms contains
             required type info hardcoded, but this may be changed later. In any
             case, it may be useful to distinguish proxy formulas by role*)
@@ -198,6 +199,7 @@ let role_to_string = function
     Axiom -> "axiom"
   | Plain -> "plain"
   | Conjecture -> "conjecture"
+  | Question -> "question"
   | Type -> "type"
   | _ -> failwith "Unprintable role" (*we don't want Proxy to be printed in FO output: use "plain" instead*)
 

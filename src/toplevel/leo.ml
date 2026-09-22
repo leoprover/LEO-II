@@ -16,7 +16,7 @@ let rev =
   if Build_config.revision = "" then "" else "(" ^ Build_config.revision ^ ")"
 
 let version () =
-  print_endline ("LEO-II version v2.0 " ^ rev ^ " \
+  print_endline ("LEO-II version v2.1 " ^ rev ^ " \
   (compiled on " ^ Sys.os_type ^ " with OCaml-" ^ Sys.ocaml_version ^ ")");
   if State.state_initialize.flags.verbose then Automation.atp_versions ()
 
@@ -427,11 +427,27 @@ let execute_conf () =
             in
               Queue.clear global_conf.schedules;
               if Build_config.debug then Util.sysoutf 2 (fun () -> ("Duration of slices: " ^ string_of_int timeslice));
-              (*enqueue schedules*)
+              (*enqueue schedules.  A strategy that filters the axioms by
+                relevance finishes fast when it finishes at all -- the problems
+                it adds to the ontological-argument dataset take 0.1 to 1.1
+                seconds -- and a slice as long as the others only takes time
+                from the unfiltered search, which loses what needs the whole
+                budget.  It gets a quarter of the budget, two seconds at least,
+                and the other strategies share the rest; time a slice leaves
+                unused falls to the last one anyway.*)
+              let is_filter = function "flag-relevance-filter 1" :: _ -> true | _ -> false in
+              let total = float_of_int (timeslice * List.length schedules) in
+              let n_filter = List.length (List.filter is_filter schedules) in
+              let n_plain = List.length schedules - n_filter in
+              let filter_dur =
+                if n_filter = 0 then 0. else max 2.0 (total /. 4. /. float_of_int n_filter) in
+              let plain_dur =
+                if n_plain = 0 then total /. float_of_int n_filter
+                else (total -. filter_dur *. float_of_int n_filter) /. float_of_int n_plain in
               List.iter
                 (fun strat ->
                    let sched : schedule =
-                     {duration = float_of_int timeslice;
+                     {duration = (if is_filter strat then filter_dur else plain_dur);
                       strategy = strat}
                    in
                      Queue.add sched global_conf.schedules)

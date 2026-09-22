@@ -1,5 +1,62 @@
                     THE LEO-II System -- Changes
 
+v2.1
+----
+
+2.1 answers 217 of the 294 problems of the ontological-argument dataset at ten
+seconds on one core, against 205 for 2.0; 0 of 45 non-theorems.  One change in
+the schedule, one feature, two repairs.
+
+**A short filtered slice first.**  The relevance filter (--relevancefilter 1,
+axioms kept by shared symbols with the conjecture) had been measured as the
+single largest lever on the problems the default misses, and as a loss as a
+default: it drops axioms that a proof needs.  It is now the first of the two
+time slices, with a quarter of the budget, for problems with long definitions
+(the branch the ontological-argument problems take); the unfiltered search
+gets the rest, and whatever the filtered slice leaves unused.  Measured, one
+core, ten seconds: filter in the second of two equal slices 213, in the first
+207, first with a quarter of the budget 217, last with a quarter 211.  What
+the filter finds it finds in 0.1 to 1.1 seconds -- all five Ax2a_prime, six
+UniqueEss3 -- and what it does not find fast it does not find at all.  The
+slice lengths are computed in leo.ml, the strategy is in
+strategy_scheduling.ml with the measurements beside it.  On a sample of 400
+TH0 theorems across the TPTP the slice is neutral, 247 either way; on the 470
+TPTP non-theorems and the 45 of the dataset nothing is proved.
+
+**Questions are answered.**  A formula of role "question" is proved like a
+conjecture, and the instances of its existential variables are reported:
+
+    thf(q, question, (? [X: $i]: (p @ X))).
+    % SZS status Theorem ...
+    % SZS answers Tuple [[a]]
+
+The answer comes from the first-order prover.  LEO-II negates and clausifies the
+question as it does a conjecture; the clauses that descend from it and still
+carry free variables are what an answer must instantiate, and handed to E as
+axioms they would let it refute the problem without saying which instance did
+it.  They are bundled instead into one formula of role "question",
+?[X1..Xn]: (~C1 | ... | ~Ck) -- the negation of the conjunction of the
+universally closed clauses, hence equivalent -- and E is run with --answers=1.
+Its answer is a term over LEO-II's own first-order encoding and is read back
+out of it: type tags dropped, applications written with @, the constant prefix
+removed, a lambda-lifted symbol replaced by the term it stands for.  Two things
+to know.  The answer is given after definition unfolding, so a defined symbol
+appears as its definiens; and a variable the prover left uninstantiated is
+printed as it came (X1), which for a disjunctive question is the right answer.
+E reports Theorem for a problem with a question where it reports Unsatisfiable
+for a clause set; both count as success now.  Explicit $answer literals in the
+clauses would have been simpler, but E ignores them in cnf and fof input.
+
+**"--proofoutput 2" finds epclextract by itself.**  It expands the first-order
+steps of a proof with epclextract, which ships with E and lives next to
+eprover; when .leoatprc does not name it, LEO-II now looks there.
+
+The debug print "Hallo: type of symbol X unknown" that directory mode showed on
+every problem is a warning on verbosity level 1, worded as one.
+
+The equality-of-literal-terms test in simplify compares indexed terms by
+identifier instead of rebuilding them; neutral in the measurement, a cleanup.
+
 v2.0
 ----
 
