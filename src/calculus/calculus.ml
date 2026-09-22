@@ -1909,6 +1909,19 @@ let factorize_restricted (cl:cl_clause) (st:state) =
 (* this does not do much yet !!! *)
 let simplify (cl:cl_clause) (st:state) =
   (* output st (fun () -> ("\n\  SIMPLIFY: "^(cl_clause_to_protocol cl))); *)
+  (*Two literal terms are the same term.  Both pairwise tests below used to
+    rebuild each term from the index with xterm2term and compare the results
+    structurally -- inside a loop over the other literals, so quadratically in
+    the clause, on every clause simplified.  An indexed term is equal to
+    another exactly when their identifiers are, which is what the index is
+    for; the structural comparison is kept only for the case the index cannot
+    decide, so that nothing the old test found is missed.  The same mistake,
+    in the same shape, cost Leo-III a third of its running time in the
+    hashing of its shared types.*)
+  let same_lit_term a b =
+    match a, b with
+      | Indexed (i1, id1), Indexed (i2, id2) when i1 == i2 -> id1 = id2
+      | _ -> (xterm2term a) = (xterm2term b) in
   let rec faclits (ll:role lit_literal list) (flag2:bool) (rl:role lit_literal list) =
     match ll with 
       [] -> (flag2,rl)
@@ -1917,7 +1930,7 @@ let simplify (cl:cl_clause) (st:state) =
 	    (fun lit -> 
 	      lit.lit_polarity = hd.lit_polarity
 		&& 
-	      (xterm2term lit.lit_term) = (xterm2term hd.lit_term) 
+	      same_lit_term lit.lit_term hd.lit_term
 		)
 	    tl 
 	then faclits tl (true || flag2) rl else faclits tl flag2 (hd::rl)  in
@@ -1927,15 +1940,15 @@ let simplify (cl:cl_clause) (st:state) =
   and flag1 = ref false in
   for i = 0 to ((Array.length larray) - 1) do
     let lit = larray.(i) in
-    (* make this more efficient *)
     if List.exists (fun l -> 
 	              (not (lit.lit_polarity = l.lit_polarity))
 		      &&	        
-	             (xterm2term lit.lit_term) = (xterm2term l.lit_term) 
+	             same_lit_term lit.lit_term l.lit_term
 		    )
                     !newlits
     then tautology := true
     else 
+     (*one reconstruction per literal, for the shape test; not one per pair*)
      match (xterm2term lit.lit_term) with
      | Symbol "$true" -> 
 	 if lit.lit_polarity then tautology := true
