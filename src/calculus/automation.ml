@@ -1001,14 +1001,14 @@ let call_fo_atp (st:state) (prover:string) =
     match State.global_conf.atp_timeout_forced with
         None -> int_of_float (State.time_remaining_of_schedule ())
       | Some x -> x in
-  let start_time = Unix.gettimeofday () in
+  let start_time = State.cpu_time () in
     if time_left > 0 then (*otherwise ATP will be given negative time!*)
       (*shrink ATP timeout in case it would exceed this schedule's duration*)
       if State.state_initialize.flags.atp_timeout > time_left then
         ignore(State.set_flag_atp_timeout State.state_initialize time_left);
 
       call_fo_atp_help st prover candidate_clauses;
-      State.child_time := !State.child_time +. (Unix.gettimeofday () -. start_time)
+      State.child_time := !State.child_time +. (State.cpu_time () -. start_time)
 
 let call_fo_atp_according_to_frequency_flag (st:state) (prover:string) =
   if

@@ -13,6 +13,11 @@ val problem_overshot : float ref
 val schedule_start : float ref
 val global_deadline : float ref
 
+(*CPU seconds of this process and of the children it has waited for: the clock
+  the time budgets are measured on, so that a run does the same work whatever
+  else the machine is doing.*)
+val cpu_time : unit -> float
+
 exception STRATEGY_TERMINATED
 
 val time_remaining_of_schedule : unit -> float

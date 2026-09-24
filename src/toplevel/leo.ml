@@ -310,6 +310,23 @@ let run_schedules () =
           (!State.problem_overshot /. float (Queue.length global_conf.schedules)) in
     (*Timeout for the ATP*)
     let atptmo =
+      (*Truncated, and rounding up was tried and rejected.  The share of a slice
+        that one call of the first-order prover may have is
+        duration/atp_subslices, and truncating it throws most of it away at a
+        short budget: a ten second run gives the unfiltered slice 7.5 seconds, a
+        fifth of which is 1.5, and the call goes out with a limit of 1.  Rounding
+        that up to 2 makes ScottVariantHOMLAndersonQuant/Pos, which sits exactly
+        on the boundary, come out in ten runs of ten instead of three, and it
+        costs nine problems over the 294: 208 against 218.  Thirteen are lost and
+        four won, and twelve of the thirteen are the GoedelVariantHOML3 family.
+        Forcing the limit back to one second with -at 1 brings every one of them
+        back, so it is the limit and not the clock.  Those problems need many
+        cheap calls rather than few long ones: doubling the limit halves the
+        number of calls, and the iteration whose clause set carries the
+        refutation is never reached.  atp_subslices is 5 because a slice used to
+        schedule five calls; since the prover calls every fifth iteration of its
+        main loop instead, that constant no longer describes anything, and 1 is
+        what it happens to yield.*)
       (*FIXME constants can be made parameters*)
       min 25
         (max State.atp_min_timeout
@@ -335,14 +352,14 @@ let run_schedules () =
       State.current_schedule := {schedule with duration = duration};
       State.child_time := 0.0;
       State.problem_overshot := 0.0;
-      State.schedule_start := Unix.gettimeofday () +. duration;
+      State.schedule_start := State.cpu_time () +. duration;
       Strategy_scheduling.execute_commands schedule.strategy in
   let solved = ref false
   in
     (*having completed the schedule, check if there's a next schedule to run*)
     while (not (Queue.is_empty global_conf.schedules) && not !solved)
     do
-      let start_time = Unix.gettimeofday () in
+      let start_time = State.cpu_time () in
       try
         solved := run_next_schedule ()
       with State.STRATEGY_TERMINATED -> ();
@@ -350,7 +367,7 @@ let run_schedules () =
       State.problem_cumulative_time := !State.problem_cumulative_time +.
         !State.current_schedule.duration;
       State.problem_overshot := !State.problem_overshot +.
-        (Unix.gettimeofday () -. start_time) -. !State.current_schedule.duration;
+        (State.cpu_time () -. start_time) -. !State.current_schedule.duration;
     done;
 
     if not !solved &&
@@ -405,16 +422,24 @@ let execute_conf () =
               than the whole limit, and until this was set nothing could stop
               it.*)
             State.global_deadline :=
-              Unix.gettimeofday () +. float_of_int global_conf.global_timeout;
+              State.cpu_time () +. float_of_int global_conf.global_timeout;
             (*And a real alarm as the backstop.  A deadline only helps where
               something reads it, and the places that do not are not a fixed
               list: indexing the problem, normalising a formula, whatever is
               added next.  A signal arrives wherever the prover happens to be,
               so the limit holds without every loop having to know about it.
-              The grace is what a run needs to report its own status.*)
+
+              The budget itself is CPU time (State.cpu_time), so a run on an
+              oversubscribed machine takes longer in wall-clock terms than the
+              limit says.  This alarm therefore cannot be the limit plus a few
+              seconds any more, or it would cut exactly the runs the CPU clock
+              is meant to protect.  It is a hang-catcher: twice the budget and
+              five seconds, which on an idle machine is never reached, and on a
+              machine loaded beyond that a caller's own limit ends the run
+              first.*)
             ignore
               (Unix.setitimer Unix.ITIMER_REAL
-                 {Unix.it_value = float_of_int (global_conf.global_timeout + 5);
+                 {Unix.it_value = float_of_int (2 * global_conf.global_timeout + 5);
                   Unix.it_interval = 2.0});
             let schedules =
               try

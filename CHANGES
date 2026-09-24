@@ -3,14 +3,16 @@
 v2.2
 ----
 
-2.2 reads the TH0 problems that 2.1 could not read.  Of the 3637 monomorphic
+2.2 reads the TH0 problems that 2.1 could not read, and measures its time budget
+in CPU seconds rather than on the wall clock.  Of the 3637 monomorphic
 TH0 problems of the TPTP library v7.5.0 (the 4515 problems whose name carries
 a "^", less 875 that are TH1 and 3 that need arithmetic), 2.1 ends 28 in
 Error; 2.2 ends none.  Five of them it now proves (SWW478^1, ^2, ^3,
-SYO557^1, SYO558^1), the other 23 it reads and times out on.  Nothing changes
-on the ontological-argument dataset: 217 of 294 at ten seconds on one core,
-the same set of problems as 2.1, and 0 of 45 non-theorems.  Two repairs, both
-found by that library run and by nothing else.
+SYO557^1, SYO558^1), the other 23 it reads and times out on.  On the ontological-argument
+dataset it proves 218 of 294 at ten seconds on one core, where 2.1 proves 217:
+every problem 2.1 proves and one more.  0 of 45 non-theorems.  Two repairs, both
+found by that library run and by nothing else, and one change to how the budget
+is counted.
 
 **The type a quantifier combinator is used at.**  THF lets a problem name the
 type at which a polymorphic combinator is applied -- "?? @ $o @ (P @ I)",
@@ -38,6 +40,22 @@ See src/calculus/calculus.ml.
 
 The 28th, SEV154^5, no longer ends in Error and does not reproduce as one; it
 times out.
+
+**The time budget is CPU seconds.**  "-t 10" used to mean ten seconds of wall
+clock, so what a run achieved depended on what else the machine was doing: the
+slices and the limit handed to the first-order prover are computed from the time
+left, and under load that time runs out while the work done does not grow with
+it.  The budget is now the CPU time of the process and of the children it has
+waited for (Unix.times, State.cpu_time).  The first-order prover is run
+synchronously, so its seconds are in the total, and it is itself given
+--cpu-limit rather than a wall-clock limit, so the whole budget is one kind of
+second throughout.  On the 294 problems this gives 218 at ten seconds on one
+core against 217 before, losing none; 0 of 45 non-theorems.  The real-time alarm
+stays as the backstop against a hang and is now twice the budget and five
+seconds, because a CPU budget may take longer in wall-clock terms than the limit
+says.  What this does not fix: the two problems that sit at the edge of the
+budget are still not reproducible, 3 and 2 runs in ten, and the cause is not the
+clock.  See the comment at atptmo in leo.ml for what was measured and rejected.
 
 Measured against the record of the TPTP: nothing proved of the 470 TPTP
 non-theorems, and no answer contradicting a Status field, in the 14548 runs

@@ -83,8 +83,34 @@ let global_deadline = ref 0.0
 
 exception STRATEGY_TERMINATED
 
+(*The clock the budgets are measured on.
+
+  Measured on the wall clock, the outcome of a run depends on what else the
+  machine is doing.  The slices and the limit handed to the first-order prover
+  are computed from the time left, and under load that time runs out while the
+  work done does not grow with it, so the same problem is proved on a quiet
+  machine and missed on a busy one.  Measured on the 294 problems of the
+  ontological-argument dataset, two of them fell on either side of the limit
+  from one run to the next: ScottVariantHOMLAndersonQuant/Pos five times out of
+  ten, always at 5.9 seconds, and GoedelVariantHOML3AndersonQuant/Th4 once and
+  then not again.
+
+  Unix.times counts the CPU seconds this process has used and those of the
+  children it has waited for.  The first-order prover is run synchronously and
+  reaped, so its seconds are in there, and a budget measured this way buys the
+  same amount of work on any machine.  The first-order prover is itself given a
+  CPU limit rather than a wall-clock one, so with this the whole budget is one
+  kind of second throughout.
+
+  What this costs: a run can now take longer in wall-clock terms than the limit
+  says, by whatever factor the machine is oversubscribed.  The real-time alarm
+  in leo.ml is the backstop against a hang and is set wide enough to allow it.*)
+let cpu_time () =
+  let t = Unix.times () in
+    t.Unix.tms_utime +. t.Unix.tms_stime +. t.Unix.tms_cutime +. t.Unix.tms_cstime
+
 (*time left for this schedule*)
-let time_remaining_of_schedule () = !schedule_start -. Unix.gettimeofday ()
+let time_remaining_of_schedule () = !schedule_start -. cpu_time ()
 
 (*FIXME min. time slices for each strategy could go in schedule record, instead of having it constant*)
 let atp_subslices = 5
@@ -114,7 +140,7 @@ let check_timeout () =
     begin
       if Build_config.debug then
         begin
-          Util.sysoutf 2 (fun () -> ("check_timeout: leo=" ^ string_of_float (Sys.time ()) ^
+          Util.sysoutf 2 (fun () -> ("check_timeout: cpu=" ^ string_of_float (cpu_time ()) ^
           " e=" ^ string_of_float !child_time ^
           " pct=" ^ string_of_float !problem_cumulative_time ^ "\n"));
           Util.sysoutf 2 (fun () -> ("time_left: " ^ string_of_float (time_remaining_of_schedule ()) ^ "\n"))
@@ -125,7 +151,7 @@ let check_timeout () =
         slice -- reading the problem, choosing the strategies -- would then be
         cut off at once.  Only a schedule that exists can expire.*)
       (*FIXME make the "0.1" constant a parameter?*)
-      if (!global_deadline > 0.0 && Unix.gettimeofday () > !global_deadline)
+      if (!global_deadline > 0.0 && cpu_time () > !global_deadline)
          || (!schedule_start > 0.0 && time_remaining_of_schedule () -. 0.1 < 0.)
       then raise STRATEGY_TERMINATED
     end
