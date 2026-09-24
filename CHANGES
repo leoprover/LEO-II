@@ -1,5 +1,48 @@
                     THE LEO-II System -- Changes
 
+v2.2
+----
+
+2.2 reads the TH0 problems that 2.1 could not read.  Of the 3637 monomorphic
+TH0 problems of the TPTP library v7.5.0 (the 4515 problems whose name carries
+a "^", less 875 that are TH1 and 3 that need arithmetic), 2.1 ends 28 in
+Error; 2.2 ends none.  Five of them it now proves (SWW478^1, ^2, ^3,
+SYO557^1, SYO558^1), the other 23 it reads and times out on.  Nothing changes
+on the ontological-argument dataset: 217 of 294 at ten seconds on one core,
+the same set of problems as 2.1, and 0 of 45 non-theorems.  Two repairs, both
+found by that library run and by nothing else.
+
+**The type a quantifier combinator is used at.**  THF lets a problem name the
+type at which a polymorphic combinator is applied -- "?? @ $o @ (P @ I)",
+"!! @ nat @ Q" -- and the grammar did not know that form.  With a defined type
+the file was rejected outright (SCT169^3, SYO557^1, SYO558^1); with a user
+type the type name parsed as a constant and the term could not be built, which
+raised (the six NUM923 to NUM926 and fifteen SWW470 to SWW478).  24 of the 28.
+For the defined types the grammar now accepts the argument and drops it;
+LEO-II infers the type itself.  For a user type the grammar cannot: a type
+name and a constant are both lower words, and separating them in the grammar
+costs two reduce/reduce conflicts.  That case is undone after parsing instead,
+where the signature knows which names are types, and only in front of a
+further argument -- the combinator takes one argument, so a second one can
+only be the type.  The conflict counts of the grammar are where they were, 16
+shift/reduce and 25 reduce/reduce.  See src/parser-hotptp/htparser.mly, rule
+defined_type_argument and function drop_type_argument.
+
+**The choice guard speaks before the literal is built.**  detect_choice_terms
+rejects a candidate whose term carries a variable the clause does not have
+free, and the type of such a term is in no signature -- but the literal was
+built before the guard could speak, and building it is what raised.  The
+literal is now built where it is used.  3 of the 28: SWW473^2, SWW474^2,
+SWW474^3, each an Error with the choice rule and a timeout with --notUseChoice.
+See src/calculus/calculus.ml.
+
+The 28th, SEV154^5, no longer ends in Error and does not reproduce as one; it
+times out.
+
+Measured against the record of the TPTP: nothing proved of the 470 TPTP
+non-theorems, and no answer contradicting a Status field, in the 14548 runs
+of four provers over this part of the library.
+
 v2.1
 ----
 
