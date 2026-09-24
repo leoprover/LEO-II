@@ -56,6 +56,17 @@ let add_def (s,t) =
     end;
   add_fun := fun n r -> Hashtbl.add !termroles r (s,t)
 
+(*"?? @ nat @ (p @ i)": the combinator is polymorphic and the problem says at
+  which type it is used.  The grammar cannot tell that argument from a term --
+  a type name and a constant are both lower words -- so it is read as an
+  application and undone here, where the signature knows which names are types.
+  Only a declared base type is dropped, and only in front of a further
+  argument, which is what makes this unambiguous: the combinator takes one. *)
+let drop_type_argument t =
+  match t with
+      Appl (Symbol s, u) when Signature.is_basetype_in !sigma s -> u
+    | _ -> t
+
 let add_const_strict (c,ty) =
   add_uninterpreted_symbol !sigma c ty;
   add_fun := fun n r -> Hashtbl.add !termroles r (c, Symbol c)
@@ -634,7 +645,21 @@ thf_unary_formula : /* Term.term */
   | TILDE thf_quantified_formula { Appl(Symbol(Signature.neg),$2) }
   | TILDE TILDE thf_unitary_formula { Appl(Symbol(Signature.neg),Appl(Symbol(Signature.neg),$3)) }
   | quantifier_comb thf_logic_formula { Appl($1, $2) }
-  | quantifier_comb AT_SIGN thf_logic_formula { Appl($1, $3) }
+  | quantifier_comb AT_SIGN thf_logic_formula { Appl($1, drop_type_argument $3) }
+  /* The combinators are polymorphic, and THF lets a problem say at which type
+     one is used: "?? @ $o @ (P @ I)".  LEO-II infers the type itself, so the
+     argument is read and dropped.  A user type is accepted too: the
+     combinator takes one argument, so a second one can only be the type it is
+     used at.  Isabelle's exports write the instance out that way, at "nat" as
+     readily as at $o. */
+  | quantifier_comb AT_SIGN defined_type_argument AT_SIGN thf_logic_formula { Appl($1, $5) }
+;
+
+defined_type_argument : /* unit */
+    TOK_I { }
+  | TOK_O { }
+  | TOK_INT { }
+  | TOK_REAL { }
 ;
 
 quantifier_comb : /* Term.term */

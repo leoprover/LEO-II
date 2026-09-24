@@ -4626,24 +4626,30 @@ let detect_choice_terms (cl:cl_clause) (st:state) =
            let _ = Util.sysout 3 "\n termcapturedvars: "; List.iter (fun x -> (Util.sysoutf 3 (fun () -> ((Term.to_string x)^" ")))) termcapturedvars in
 	   let var = create_and_insert_new_free_var_with_simple_name ty st in
            let choiceAxInst = (Appl(Appl(Symbol("|"),(Appl(Symbol("~"),(Appl(Symbol("~"),(Appl(Symbol("!"),(Abstr(var,ty,(Appl(Symbol("~"),(Appl(term,var))))))))))))),(Appl(term,(Appl(choice,term)))))) in
-           let lit1 = (lit_mk_pos_literal st.signature (term2xterm (beta_normalize choiceAxInst))) in 
+           (*The guard below rejects a candidate whose term carries a variable the
+             clause does not have free -- a bound name that beta normalisation
+             renamed and that has no type in the signature.  The literal was
+             built before that guard could speak, so the rejected case raised
+             instead of being rejected: three TPTP problems (SWW473, SWW474)
+             ended in Error here.  It is built where it is used. *)
+           let lit1 () = (lit_mk_pos_literal st.signature (term2xterm (beta_normalize choiceAxInst))) in 
 		 match (termcapturedvars,(hd = choice))  with
-                     ([],true) ->  let cl2new = rename_free_variables (mk_clause [lit1] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
+                     ([],true) ->  let cl2new = rename_free_variables (mk_clause [lit1 ()] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
                                      [cl;cl2new]
                    | ([],false) -> (* let cl1new = cl in *)
   		                   let cl2new = instantiate [(term2xterm hd,term2xterm choice)] cl st in
-                                   let cl3new = rename_free_variables (mk_clause [lit1] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
+                                   let cl3new = rename_free_variables (mk_clause [lit1 ()] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
                                      [cl;cl2new;cl3new]
                    | (_,_) ->     [cl] 
 				     
 (*
                    | (_,true) -> let cl1new = cl in 
-		                  let cl2new = rename_free_variables (mk_clause [lit1] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
+		                  let cl2new = rename_free_variables (mk_clause [lit1 ()] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
                                   let cl3new = rename_free_variables (mk_clause [lit2] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
                                      [cl1new;cl2new;cl3new]
                    | (_,false) -> (* let cl1new = cl in *)
                                  let cl2new = instantiate [(term2xterm hd,term2xterm choice)] cl st in
-		                 let cl3new = rename_free_variables (mk_clause [lit1] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
+		                 let cl3new = rename_free_variables (mk_clause [lit1 ()] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
                                  let cl4new = rename_free_variables (mk_clause [lit2] (inc_clause_count st) termrealfreevars ("choice",[(cl.cl_number,"")],"") cl.cl_origin st) st in
                                      [cl2new;cl3new;cl4new]
 *)
