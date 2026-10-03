@@ -1035,6 +1035,84 @@ let write_fo_like_clauses_subdialog (st:state) =
     else
 	Util.sysoutf 1 (fun () -> ("\nFlag flag-write_fo-like-clauses is not set. No FO-like clauses file written!\n\n"))
 
+(*Set when the problem read last had an axiom replaced by instances of it (see
+  init_problem): a refutation of what remains is a refutation of the problem,
+  a saturation of it is no countermodel of the problem.*)
+let axioms_replaced = ref false
+
+(*Instances of an axiom that quantifies over sets of properties, at the sets
+  the problem itself names.  Ax1Gen in the ontological-argument problems says
+  that a property is positive when it is the conjunction of a set of positive
+  properties; the proof of L uses it once, at P, the set of the positive
+  properties.  Primitive substitution builds bindings from logical constants
+  and never offers P, and when the general axiom reaches the first-order
+  prover, its literals with a variable at the head ("X P w" for the set
+  variable X) unify with nearly every literal and drown the search.  Measured
+  2026-10-03 against 2.2, the two run side by side: replacing the axiom by its
+  instances at the problem's own constants of that type and at the empty set
+  proves 225 of the 294 problems of the dataset against 217 at ten seconds
+  and 235 against 221 at sixty, three of them (HOML2/L, the Th4 of HOML3AQ
+  and HOML3poss) proved by no prover's recommended setting at ten seconds
+  before; and 1894 of the 3637 TH0 problems of the TPTP library against 1883
+  at ten seconds.  None of the 45 non-theorems, no answer against the
+  library's record.
+
+  Made when the problem is read, not from its clauses: an instance of the
+  clauses keeps the Skolem terms and the conjuncts that are trivial at the
+  instance, and those were enough to keep the first-order prover from the
+  refutation.  Only in the unfiltered slices: the relevance-filtered slice
+  lives on fast proofs from few axioms, and instances there cost it.  Only
+  where the problem mentions a constant of the binder's type: otherwise the
+  empty set alone would replace any higher-order axiom -- the choice axiom of
+  SYO541^1, instantiated at the empty set, is trivially true -- and only at
+  types ending in $o, the only ones whose empty set is "^[..]: $false".*)
+let instantiate_set_axioms st named_axioms named_theorems =
+  axioms_replaced := false;
+  if not !State.instantiate_sets || st.flags.relevance_filter > 0 then named_axioms
+  else begin
+    let occurring = Hashtbl.create 64 in
+    List.iter (fun (_, t) -> List.iter (fun n -> Hashtbl.replace occurring n ()) (Term.term_symbols t))
+      (named_axioms @ named_theorems);
+    let sets_of_properties ty =
+      Hol_type.is_funtype ty && Hol_type.is_funtype (Hol_type.arg_type ty) in
+    let constants ty =
+      List.filter_map
+        (fun (str, tp) ->
+           if tp = ty && not (Signature.is_defined_symbol st.signature str)
+              && Hashtbl.mem occurring str
+           then Some (Term.Symbol str) else None)
+        (Signature.all_uninterpreted_symbols st.signature) in
+    let empty_set ty =
+      let rec lam ty =
+        match ty with
+            Hol_type.Funtype (a, b) ->
+              Term.Abstr (Term.Symbol ("SPI" ^ string_of_int (Hashtbl.hash ty)), a, lam b)
+          | _ -> Term.Symbol "$false" in
+        if Hol_type.base_result_type ty = Signature.bt_o then [lam ty] else [] in
+    let candidates ty =
+      if not (sets_of_properties ty) then []
+      else match constants ty with [] -> [] | cs -> cs @ empty_set ty in
+    (*the instances of a prefix of universal quantifiers, every binder of a
+      wanted type either kept or instantiated, at least one instantiated*)
+    let rec insts t =
+      match t with
+          Term.Appl (Term.Symbol q, Term.Abstr (x, ty, body)) when q = Signature.forall ->
+            let kept = List.map (fun b -> Term.Appl (Term.Symbol q, Term.Abstr (x, ty, b))) (insts body) in
+            let here = match x with
+                Term.Symbol xn ->
+                  List.map (fun c -> Term.beta_normalize (Term.subst_symbols [(xn, c)] body)) (candidates ty)
+              | _ -> [] in
+              kept @ List.concat_map (fun t' -> t' :: insts t') here
+        | _ -> [] in
+    List.concat_map
+      (fun (name, t) ->
+         match insts t with
+             [] -> [(name, t)]
+           | is -> axioms_replaced := true;
+                   List.mapi (fun i t' -> (name ^ "_inst" ^ string_of_int i, t')) is)
+      named_axioms
+  end
+
 (** This function is used in cmd_read_problem_string, cmd_read_problem_file, cmd_test_problem *)
 let init_problem termlist sigma termroles (kind,filename) st =
   current_problem_file := filename;
@@ -1052,6 +1130,7 @@ let init_problem termlist sigma termroles (kind,filename) st =
   State.question_posed := named_questions <> [];
   State.question_answers := [];
   let named_theorems = ((Hashtbl.find_all termroles "theorem")@(Hashtbl.find_all termroles "conjecture")@named_questions) in
+  let named_axioms = instantiate_set_axioms st named_axioms named_theorems in
   let named_negated_conjectures = (Hashtbl.find_all termroles "negated_conjecture") in
   let axiom_clauses_pre = (List.map (fun (name,term) -> mk_clause [ lit_mk_pos_literal st.signature (term2xterm term) ] (inc_clause_count st) [] (("axiom"),[],(kind^"('"^filename^"',"^name^")")) AXIOM st) named_axioms) in
   let axiom_clauses = axiom_clauses_pre in
@@ -1643,7 +1722,9 @@ let prove_help (st:state) (prover:string)  (flag:bool) =
 		(*as does turning primitive substitution off*)
 		st.flags.prim_subst > 0 &&
 		(*as does leaving the definitions folded*)
-		not st.flags.defs_as_rules
+		not st.flags.defs_as_rules &&
+		(*and replacing an axiom by some of its instances*)
+		not !axioms_replaced
 	      then
                 begin
                   ignore(set_flag_max_uni_depth st unidepth);

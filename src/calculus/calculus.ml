@@ -95,11 +95,11 @@ let rec varpoints st id pos =
 let lit_subsumes st id =
   let (_,fixp) = fixpoints st id [] in
   let subsumed = ref (match fixp with 
-                        (id,pos)::tl -> (try (Hashtbl.find (Hashtbl.find st.index.term_at_pos_role pos) id)
+                        (id,pos)::tl -> (try (Hashtbl.find (Position.PosTbl.find st.index.term_at_pos_role pos) id)
                                    with Not_found -> IdSet.empty)
                       | _ -> IdSet.empty) in
   List.iter (fun (id, pos) -> subsumed := IdSet.inter
-                                            (try (Hashtbl.find (Hashtbl.find st.index.term_at_pos_role pos) id)
+                                            (try (Hashtbl.find (Position.PosTbl.find st.index.term_at_pos_role pos) id)
                                              with Not_found -> IdSet.empty)
                                             (!subsumed))
             fixp;
@@ -108,7 +108,7 @@ let lit_subsumes st id =
 let simplify_global st =
   let idx = st.index in
   let eq = insert idx.termbase (Symbol_node "=") in
-  let allequations = try (Hashtbl.find (Hashtbl.find idx.term_at_pos_role [Function;Function]) eq)
+  let allequations = try (Hashtbl.find (Position.PosTbl.find idx.term_at_pos_role [Function;Function]) eq)
                      with Not_found -> IdSet.empty in
   let disposable = ref IdSet.empty in
   IdSet.iter (fun id -> List.iter
@@ -139,7 +139,7 @@ let simplify_global st =
                                             (if (!other) then "other" else "") in
                                 Util.sysoutf 3 (fun () -> ("  term "^(string_of_int id)^":"^(term_to_hotptp st.index.termbase id)^" ("^clpos^" clause)\n"))) subsumed))
        idset)    
-    (Hashtbl.find idx.term_at_pos_role []);
+    (Position.PosTbl.find idx.term_at_pos_role []);
   []
    
  
@@ -1482,7 +1482,7 @@ let clause_factorization st =
                                   subsumed                               
        ))
        idset)    
-    (Hashtbl.find idx.term_at_pos_role []);
+    (Position.PosTbl.find idx.term_at_pos_role []);
     let clause_mods = Hashtbl.create (Hashtbl.length factorize) in
     Hashtbl.iter
       (fun cl (id1,id2) ->
@@ -2077,12 +2077,12 @@ let boolean_ext (cl:cl_clause) (st:state) =
       - restriction to literals (index_with_role)
       - indexing of symbol occurrences at given positions *)
    output_debug "\n First try on roles:\n";
-   if ((Hashtbl.mem st.index.term_at_pos_role [Function;Function]) &&
-   (Hashtbl.mem (Hashtbl.find st.index.term_at_pos_role [Function;Function]) (Termset.create st.index.termbase (Symbol "=")))) then 
+   if ((Position.PosTbl.mem st.index.term_at_pos_role [Function;Function]) &&
+   (Hashtbl.mem (Position.PosTbl.find st.index.term_at_pos_role [Function;Function]) (Termset.create st.index.termbase (Symbol "=")))) then 
    IdSet.iter
    (fun t -> output_debug ((Term.to_string (Termset.retrieve st.index.termbase t)^"\n")))
    (* this is the list of all literals that are equations: *)
-   (Hashtbl.find (Hashtbl.find st.index.term_at_pos_role [Function;Function]) (Termset.create st.index.termbase (Symbol  "=")))
+   (Hashtbl.find (Position.PosTbl.find st.index.term_at_pos_role [Function;Function]) (Termset.create st.index.termbase (Symbol  "=")))
    else
    output_debug "nothing suitable found.\n";
 *)

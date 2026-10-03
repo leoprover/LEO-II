@@ -12,6 +12,7 @@ val problem_cumulative_time : float ref
 val problem_overshot : float ref
 val schedule_start : float ref
 val global_deadline : float ref
+val instantiate_sets : bool ref
 
 (*CPU seconds of this process and of the children it has waited for: the clock
   the time budgets are measured on, so that a run does the same work whatever

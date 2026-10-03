@@ -1,5 +1,55 @@
                     THE LEO-II System -- Changes
 
+v2.3
+----
+
+2.3 instantiates, when it reads a problem, an axiom whose leading universal
+quantifier ranges over sets of properties at the problem's own constants of
+that type, and finds identical terms faster.  Measured against 2.2, the two run
+side by side on one core each: on the 294 problems of the ontological-argument
+dataset 225 against 217 at ten seconds (nine won, GoedelVariantHOML3/Monotheism
+lost) and 235 against 221 at sixty (fourteen won, none lost); on the 3637
+monomorphic TH0 problems of the TPTP library v7.5.0 1894 against 1883 at ten
+seconds (twelve won, one lost).  None of the 45 non-theorems, no answer that
+contradicts the library's record, no Error.
+
+**Instances of axioms over sets of properties.**  Ax1Gen of the Goedel variants
+says that a property is positive when it is the conjunction of a set of positive
+properties.  The proof of L ("being God-like is positive") uses it once, at P,
+the set of the positive properties.  Primitive substitution builds bindings
+from logical constants and never offers P, and when the general axiom reaches
+the first-order prover, its literals with a variable at the head unify with
+nearly every literal and the prover drowns.  E proves L in half a second;
+2.2 did not prove it at all.  2.3 replaces such an axiom, in the unfiltered
+slices, by its instances at each constant of the binder's type that the
+problem mentions and at the empty set, the instance that makes the universal
+property positive.  The instances are made from the formula as read, before
+clause normal form: made from the clauses, they keep Skolem terms and conjuncts
+that are trivial at the instance, and that was enough to defeat the
+first-order prover.  The relevance-filtered slice is left alone; its fast
+proofs come from few axioms.  A proof from instances is a proof, but a
+saturation of them is no countermodel, so after a replacement LEO-II never
+answers CounterSatisfiable (without that guard it claimed a countermodel for
+SYO541^1, whose choice axiom is trivially true at the empty set).  Only binder
+types with a function type as argument are touched, only where the problem
+names a constant of that type, and the empty set only for types ending in $o.
+"--notInstantiateSets" (-nis) turns the rule off.  See init_problem in
+src/interfaces/interactive.ml.
+
+**Positions hashed whole.**  The table that indexes subterms by position
+(Termset.term_at_pos_role) used OCaml's generic hash, which reads only the
+first ten values of a list: every position below a common prefix of that
+length fell into the same bucket, and lookups became walks of structural
+comparisons -- a fifth of the running time on some problems.  Positions now
+have a hash over the whole position (Position.PosTbl).  Same answers, so the
+same search, faster.
+
+**Building with GNU make 4.**  .depend depended on the phony target
+build-config, so GNU make 4 rebuilt the included dependency file and re-read
+the Makefile forever (reported by Geoff Sutcliffe for 2.2; make 3.81 does not
+do this).  It now depends on general/build_config.ml, written without a
+recursive make.  The archives of 1.8.0 to 2.2 were re-issued with this fix.
+
 v2.2
 ----
 

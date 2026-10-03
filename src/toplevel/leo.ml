@@ -16,7 +16,7 @@ let rev =
   if Build_config.revision = "" then "" else "(" ^ Build_config.revision ^ ")"
 
 let version () =
-  print_endline ("LEO-II version v2.2 " ^ rev ^ " \
+  print_endline ("LEO-II version v2.3 " ^ rev ^ " \
   (compiled on " ^ Sys.os_type ^ " with OCaml-" ^ Sys.ocaml_version ^ ")");
   if State.state_initialize.flags.verbose then Automation.atp_versions ()
 
@@ -45,6 +45,7 @@ type arg =
   | NOTREPLACELEIBNIZEQ
   | NOTREPLACEANDREWSEQ
   | NOTUSECHOICE
+  | NOTINSTANTIATESETS
   | NOTUSEEXTUNI
   | NOTUSE_EXTCNFCOMBINED
   | SCRIPTMODE
@@ -103,6 +104,8 @@ let help () = print_string ("\
      --notReplLeibnizEQ, -nrleq Do not automatically replace Leibniz EQ literals in clauses \n \
      --notReplAndrewsEQ, -nraeq Do not automatically replace Andrews EQ literals in clauses \n \
      --notUseChoice,     -nuc   Do not use the choice rule \n \
+     --notInstantiateSets, -nis Do not instantiate axioms over sets of properties\n \
+                                at the problem's own constants when reading it\n \
      --notUseExtuni,     -nue   Do not use extensional unification \n \
      --notUseExtCnfCmbd, -nux   Do not use the extcnf_combined rule \n \
      --order ORDERING           Use ORDERING\n\tAvailable options: " ^
@@ -210,6 +213,9 @@ let rec parse_cl cs ps =
     | "-nuc" :: xs
     | "--notUseChoice" :: xs ->
         parse_cl xs (NOTUSECHOICE :: ps)
+    | "-nis" :: xs
+    | "--notInstantiateSets" :: xs ->
+        parse_cl xs (NOTINSTANTIATESETS :: ps)
     | "-nue" :: xs
     | "--notUseExtuni" :: xs ->
         parse_cl xs (NOTUSEEXTUNI :: ps)
@@ -585,6 +591,9 @@ let rec process args = match args with
       process args
   | NOTUSECHOICE :: args ->
       ignore(State.set_flag_use_choice State.state_initialize false);
+      process args
+  | NOTINSTANTIATESETS :: args ->
+      State.instantiate_sets := false;
       process args
   | NOTUSEEXTUNI :: args ->
       ignore(State.set_flag_use_extuni State.state_initialize false);

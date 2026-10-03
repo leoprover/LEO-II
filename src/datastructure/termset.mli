@@ -78,7 +78,7 @@ type 'a termindex = {
   has_role            : ('a, id) Hashtbl.t;
   occurs_in_role      : (id, IdSet.t) Hashtbl.t;
   role_has_headsymbol : (id, 'a) Hashtbl.t;
-  term_at_pos_role    : (Position.position, ((id, IdSet.t) Hashtbl.t)) Hashtbl.t
+  term_at_pos_role    : ((id, IdSet.t) Hashtbl.t) Position.PosTbl.t
 }
 (** a datastructure for term indexing *)
 

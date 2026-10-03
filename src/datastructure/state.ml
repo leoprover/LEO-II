@@ -81,6 +81,11 @@ let schedule_start = ref 0.0
   neither at ten seconds nor at all.*)
 let global_deadline = ref 0.0
 
+(*Whether an axiom quantifying over sets of properties is instantiated at
+  reading time at the problem's own constants of that type (see init_problem
+  in interfaces/interactive.ml); "--notInstantiateSets" turns it off.*)
+let instantiate_sets = ref true
+
 exception STRATEGY_TERMINATED
 
 (*The clock the budgets are measured on.

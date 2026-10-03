@@ -258,3 +258,23 @@ let superterms_no_closer_than table pos = subterms_below table (List.rev pos)
 let superterms_no_farther_than table pos = subterms_above table (List.rev pos)
 
 *)
+
+
+(*A hash table keyed by positions.  The generic Hashtbl.hash stops after ten
+  meaningful values, so it sees only the first few steps of a position: every
+  position below a common prefix of that length hashes alike, and the table
+  that indexes subterms by position (Termset.term_at_pos_role) degenerated
+  into a few buckets of very long chains, each lookup a walk of structural
+  comparisons.  This hash reads the whole position.  It changes only where an
+  entry is stored, not what a lookup answers.*)
+module PosTbl = Hashtbl.Make (struct
+  type t = position
+  let rec equal a b = match a, b with
+      [], [] -> true
+    | x :: xs, y :: ys -> x == y && equal xs ys
+    | _ -> false
+  let hash p =
+    List.fold_left
+      (fun h r -> (h * 31 + (match r with Abstraction -> 1 | Function -> 2 | Arg -> 3)) land max_int)
+      7 p
+end)

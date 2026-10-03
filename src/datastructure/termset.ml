@@ -60,7 +60,7 @@ type 'a termindex = {
   has_role            : ('a, id) Hashtbl.t;
   occurs_in_role      : (id, IdSet.t) Hashtbl.t;
   role_has_headsymbol : (id, 'a) Hashtbl.t;
-  term_at_pos_role    : (Position.position, ((id, IdSet.t) Hashtbl.t)) Hashtbl.t
+  term_at_pos_role    : ((id, IdSet.t) Hashtbl.t) Position.PosTbl.t
 }
 
 
@@ -311,7 +311,7 @@ let new_index ts =
     has_role       = Hashtbl.create i;
     occurs_in_role = Hashtbl.create i;
     role_has_headsymbol = Hashtbl.create i;
-    term_at_pos_role = Hashtbl.create i;
+    term_at_pos_role = Position.PosTbl.create i;
   }
 
 let headsymbol_of id1 idx =
@@ -852,9 +852,9 @@ let insert_and_index idx nodestruct =
   find inside the replace.  Same answers, one hash.*)
 let rec index_role_subterms idx id root role pos =
   let id2root =
-    match Hashtbl.find_opt idx.term_at_pos_role pos with
+    match Position.PosTbl.find_opt idx.term_at_pos_role pos with
       | Some h -> h
-      | None -> let h = Hashtbl.create 3 in Hashtbl.add idx.term_at_pos_role pos h; h in
+      | None -> let h = Hashtbl.create 3 in Position.PosTbl.add idx.term_at_pos_role pos h; h in
   let cur = match Hashtbl.find_opt id2root id with Some s -> s | None -> IdSet.empty in
   Hashtbl.replace id2root id (IdSet.add root cur);
   let occ = match Hashtbl.find_opt idx.occurs_in_role id with Some s -> s | None -> IdSet.empty in
@@ -875,7 +875,7 @@ let set_role idx id r =
 
 (*As in index_role_subterms: one hash of the position, not three.*)
 let rec unindex_role_subterms idx id root role pos =
-  let id2root = Hashtbl.find idx.term_at_pos_role pos in
+  let id2root = Position.PosTbl.find idx.term_at_pos_role pos in
   let cur = match Hashtbl.find_opt id2root id with Some s -> s | None -> IdSet.empty in
   Hashtbl.replace id2root id (IdSet.remove root cur);
   let occ = match Hashtbl.find_opt idx.occurs_in_role id with Some s -> s | None -> IdSet.empty in
@@ -907,18 +907,18 @@ let clear_role_index idx =
     Hashtbl.clear idx.has_role;
     Hashtbl.clear idx.occurs_in_role;
     Hashtbl.clear idx.role_has_headsymbol;
-    Hashtbl.clear idx.term_at_pos_role
+    Position.PosTbl.clear idx.term_at_pos_role
 
 
 let find_role_with_term_at_pos idx id pos =
-  if ((Hashtbl.mem idx.term_at_pos_role pos) &&
-      (Hashtbl.mem (Hashtbl.find idx.term_at_pos_role pos) id))
-  then (Hashtbl.find (Hashtbl.find idx.term_at_pos_role pos) id)
+  if ((Position.PosTbl.mem idx.term_at_pos_role pos) &&
+      (Hashtbl.mem (Position.PosTbl.find idx.term_at_pos_role pos) id))
+  then (Hashtbl.find (Position.PosTbl.find idx.term_at_pos_role pos) id)
   else IdSet.empty
 
 let find_equalities idx classify use_eq =
   let eq = insert idx.termbase (Symbol_node "=") in
-  let allequations = try (Hashtbl.find (Hashtbl.find idx.term_at_pos_role [Function;Function]) eq)
+  let allequations = try (Hashtbl.find (Position.PosTbl.find idx.term_at_pos_role [Function;Function]) eq)
                      with Not_found -> IdSet.empty in
   let equationclasses = Hashtbl.create 5 in
   IdSet.iter (fun eq -> let cls = (classify (Hashtbl.find idx.role eq)) in
@@ -1002,11 +1002,11 @@ let find_equals idx id classify use_eq =
 
 let find_equals_one_step idx id =
   let eq = insert idx.termbase (Symbol_node "=") in
-  let equations = try (Hashtbl.find (Hashtbl.find idx.term_at_pos_role [Function;Function]) eq)
+  let equations = try (Hashtbl.find (Position.PosTbl.find idx.term_at_pos_role [Function;Function]) eq)
                   with Not_found -> IdSet.empty in
-  let lefthand = try (Hashtbl.find (Hashtbl.find idx.term_at_pos_role [Function;Arg]) id)
+  let lefthand = try (Hashtbl.find (Position.PosTbl.find idx.term_at_pos_role [Function;Arg]) id)
                   with Not_found -> IdSet.empty in
-  let righthand = try (Hashtbl.find (Hashtbl.find idx.term_at_pos_role [Arg]) id)
+  let righthand = try (Hashtbl.find (Position.PosTbl.find idx.term_at_pos_role [Arg]) id)
                   with Not_found -> IdSet.empty in
   IdSet.fold (fun id s -> IdSet.add (term_at_pos idx id [Arg]) s)
     (IdSet.inter equations lefthand)

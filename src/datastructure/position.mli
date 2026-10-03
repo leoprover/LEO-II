@@ -96,3 +96,6 @@ val data_at_pos : 'a positiontable -> position -> 'a
 val all_entries : 'a positiontable -> (position * 'a) list
 (** Lookup all entries in the positiontable along with the according position. *)
 
+
+module PosTbl : Hashtbl.S with type key = position
+(** Hash tables keyed by positions, hashing the whole position *)
