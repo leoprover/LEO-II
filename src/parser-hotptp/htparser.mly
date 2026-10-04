@@ -46,15 +46,20 @@ let add_term t =
   add_fun := fun n r -> Hashtbl.add !termroles r (n,t)
 
 let add_def (s,t) =
-  try (
+  (*bracketed: without, the assignment below belonged to the handler and was
+    made only when the definition failed to type*)
+  (try (
     let ty = Term.type_of (type_of_symbol !sigma) t in
     add_defined_symbol ~ty:(Some ty) !sigma s t
   ) with Failure msg ->
     begin
       print_string ("\nin definition "^s^":\n"^msg^"\n\n");
       add_defined_symbol !sigma s t
-    end;
-  add_fun := fun n r -> Hashtbl.add !termroles r (s,t)
+    end);
+  (*the name the problem gives the definition, which a proof has to cite in
+    its file() source; the definition itself is known by its symbol*)
+  add_fun := fun n r -> Hashtbl.add !termroles r (s,t);
+                        Hashtbl.add !termroles "definition_name" (s, Symbol n)
 
 (*"?? @ nat @ (p @ i)": the combinator is polymorphic and the problem says at
   which type it is used.  The grammar cannot tell that argument from a term --

@@ -1,5 +1,36 @@
                     THE LEO-II System -- Changes
 
+v2.3.1
+------
+
+Proof output.  A derivation's leaves now name formulas of the problem, as TSTP
+requires.
+
+A proof that uses instances of an axiom over sets of properties was not a valid
+derivation in 2.3: each instance was printed as an axiom whose file() source
+named the original axiom, as if the problem stated the instance.  2.3.1 prints
+the axiom as the problem states it, under its name there, and each instance as
+inferred from it:
+
+  thf(ax1gen,axiom,(![X:...]: ...),file('L.p',ax1gen)).
+  thf(1,plain,(...),inference(instantiate_sets,[status(thm)],[ax1gen])).
+
+That leaf is made for the proof record only.  It never enters the search and
+takes no clause number, so the search is the one of 2.3: on the problems where
+2.3 is deterministic, 2.3.1 makes the same number of clauses.
+
+A definition's leaf cited the defined symbol, file('L.p',ess), where the
+problem calls the definition ess_def.  This was so in every earlier version:
+the parser recorded the definition's name only when the definition failed to
+type, an assignment that a missing pair of brackets had put into an exception
+handler.  The leaf now cites the problem's name, file('L.p',ess_def).  The
+derivation still calls the definition ess, which is what its unfold_def steps
+cite.
+
+Checked on 118 proofs, 58 of the dataset (20 of them using instances) and 60
+of the TPTP library: every parent exists, every leaf names a formula of the
+problem or its includes, and Leo-III's --syntaxcheck accepts each derivation.
+
 v2.3
 ----
 

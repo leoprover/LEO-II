@@ -116,6 +116,6 @@ val signature_to_string : signature -> string
 
 val symbol_types_to_thf : signature -> string
 
-val defs_to_thf : signature -> string -> string
+val defs_to_thf : ?source_name:(string -> string) -> signature -> string -> string
 
 val all_defs_names : signature -> string

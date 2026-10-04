@@ -70,8 +70,23 @@ type protocol = int * (string * (int * string) list * string) * string
 
 let protocol = ref [(-1,("",[],""),"\n**** Beginning of proof protocol ****")]
 
+(*Clauses that are in the proof record and never in the search -- an axiom as
+  the problem states it, when the search works on instances of it -- take
+  numbers below -1, so that the clause counter, and with it the search, is the
+  same as without them.  A proof prints them under their name in the problem.*)
+let protocol_leaf_names : (int, string) Hashtbl.t = Hashtbl.create 4
+
+let protocol_leaf_number (name:string) =
+  let n = -2 - Hashtbl.length protocol_leaf_names in
+  Hashtbl.add protocol_leaf_names n name;
+  n
+
+let protocol_name (i:int) =
+  try Hashtbl.find protocol_leaf_names i with Not_found -> string_of_int i
+
 let protocol_init () = 
   protocol := [(-1,("",[],""),"\n**** Beginning of proof protocol ****")];
+  Hashtbl.reset protocol_leaf_names;
   ()
 
 let protocol_to_string (p:protocol) =
@@ -96,11 +111,11 @@ let protocol_to_tstp_string (p:protocol) (st:state) =
     match intstring_list with
        [] -> ""
      | (hdi,hdstr)::tl -> ((List.fold_right (fun (i,str) rs -> (match str with
-                                                                      "" -> (rs^","^(string_of_int i)) 
-                                                                     | _ -> (rs^","^(string_of_int i)^":"^str)))
+                                                                      "" -> (rs^","^(protocol_name i)) 
+                                                                     | _ -> (rs^","^(protocol_name i)^":"^str)))
                                  tl (match hdstr with
-                                       "" -> (string_of_int hdi)
-                                     | _ -> ((string_of_int hdi)^":"^hdstr))))
+                                       "" -> (protocol_name hdi)
+                                     | _ -> ((protocol_name hdi)^":"^hdstr))))
   in
   let intstringlist_to_string intstring_list =
     "["^(intstringlist_to_string_wo_brackets intstring_list)^"]"
@@ -110,21 +125,21 @@ let protocol_to_tstp_string (p:protocol) (st:state) =
   | (cl_int,(info_string,intstring_list,filename),lits_string) ->  
       let lits_string_for_input str = (String.sub str 1 ((String.length lits_string) - 8)) in    
       match info_string with
-	  "axiom" -> ("\n thf("^(string_of_int cl_int)^",axiom,"^(lits_string_for_input lits_string)^","^filename^").")
-	| "theorem" -> ("\n thf("^(string_of_int cl_int)^",theorem,"^(lits_string_for_input lits_string)^","^filename^").")
-	| "conjecture" -> ("\n thf("^(string_of_int cl_int)^",conjecture,"^(lits_string_for_input lits_string)^","^filename^").")
-	| "negated_conjecture" -> ("\n thf("^(string_of_int cl_int)^",negated_conjecture,"^(lits_string_for_input lits_string)^","^filename^").")
-	| "negate_conjecture" -> ("\n thf("^(string_of_int cl_int)^",negated_conjecture,("^lits_string^"),inference("^info_string^",[status(cth)],"^(intstringlist_to_string intstring_list)^")).")
-	| "split_conjecture" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",["^info_string^"(split,[])],"^(intstringlist_to_string intstring_list)^")).")
-	| "solved_all_splits" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",["^info_string^"(join,[])],"^(intstringlist_to_string intstring_list)^")).")
-        | "unfold_def" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(thm)],["^(intstringlist_to_string_wo_brackets intstring_list)^st.origproblem_all_def_names^"])).")
-	| "extcnf_combined" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")
-	| "extcnf_forall_neg" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")
-(*	| "standard_extcnf" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")    *)
-(*	| "skolemize" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).") *)
-	| "extuni" -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")
+	  "axiom" -> ("\n thf("^(protocol_name cl_int)^",axiom,"^(lits_string_for_input lits_string)^","^filename^").")
+	| "theorem" -> ("\n thf("^(protocol_name cl_int)^",theorem,"^(lits_string_for_input lits_string)^","^filename^").")
+	| "conjecture" -> ("\n thf("^(protocol_name cl_int)^",conjecture,"^(lits_string_for_input lits_string)^","^filename^").")
+	| "negated_conjecture" -> ("\n thf("^(protocol_name cl_int)^",negated_conjecture,"^(lits_string_for_input lits_string)^","^filename^").")
+	| "negate_conjecture" -> ("\n thf("^(protocol_name cl_int)^",negated_conjecture,("^lits_string^"),inference("^info_string^",[status(cth)],"^(intstringlist_to_string intstring_list)^")).")
+	| "split_conjecture" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",["^info_string^"(split,[])],"^(intstringlist_to_string intstring_list)^")).")
+	| "solved_all_splits" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",["^info_string^"(join,[])],"^(intstringlist_to_string intstring_list)^")).")
+        | "unfold_def" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(thm)],["^(intstringlist_to_string_wo_brackets intstring_list)^st.origproblem_all_def_names^"])).")
+	| "extcnf_combined" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")
+	| "extcnf_forall_neg" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")
+(*	| "standard_extcnf" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")    *)
+(*	| "skolemize" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).") *)
+	| "extuni" -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(esa)],"^(intstringlist_to_string intstring_list)^")).")
 	| "e" -> ("\n "^lits_string)
-	| _ -> ("\n thf("^(string_of_int cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(thm)],"^(intstringlist_to_string intstring_list)^")).")
+	| _ -> ("\n thf("^(protocol_name cl_int)^",plain,("^lits_string^"),inference("^info_string^",[status(thm)],"^(intstringlist_to_string intstring_list)^")).")
 	    
 let protocollist_to_string (pl:protocol list) =
   List.fold_right (fun s rs -> (protocol_to_string s)^rs) pl ""

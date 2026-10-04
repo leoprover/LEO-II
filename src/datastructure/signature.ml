@@ -377,8 +377,10 @@ let symbol_types_to_thf (sigma:signature) =
     type_info_string basetypes ^
     type_info_string (all_uninterpreted_symbols sigma)
 
-let defs_to_thf (sigma:signature) (origfilename:string) =
-  let defined_symbols_string = fold_left (fun s (t,(d,i)) -> (s^"\n thf("^t^",definition,("^t^" = ("^(Term.to_hotptp d)^")),file(\'"^origfilename^"\',"^t^")).")) "" (sort compare_defns (all_defined_symbols_without_logical_symbols sigma)) in
+(*source_name t is the name of t's definition in the problem; the derivation
+  calls the definition t, which is what its unfold_def steps cite*)
+let defs_to_thf ?(source_name = fun t -> t) (sigma:signature) (origfilename:string) =
+  let defined_symbols_string = fold_left (fun s (t,(d,i)) -> (s^"\n thf("^t^",definition,("^t^" = ("^(Term.to_hotptp d)^")),file(\'"^origfilename^"\',"^source_name t^")).")) "" (sort compare_defns (all_defined_symbols_without_logical_symbols sigma)) in
    defined_symbols_string
 
 let all_defs_names (sigma:signature) =

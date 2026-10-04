@@ -1068,7 +1068,8 @@ let axioms_replaced = ref false
   types ending in $o, the only ones whose empty set is "^[..]: $false".*)
 let instantiate_set_axioms st named_axioms named_theorems =
   axioms_replaced := false;
-  if not !State.instantiate_sets || st.flags.relevance_filter > 0 then named_axioms
+  if not !State.instantiate_sets || st.flags.relevance_filter > 0 then
+    List.map (fun (name, t) -> (name, t, None)) named_axioms
   else begin
     let occurring = Hashtbl.create 64 in
     List.iter (fun (_, t) -> List.iter (fun n -> Hashtbl.replace occurring n ()) (Term.term_symbols t))
@@ -1107,9 +1108,9 @@ let instantiate_set_axioms st named_axioms named_theorems =
     List.concat_map
       (fun (name, t) ->
          match insts t with
-             [] -> [(name, t)]
+             [] -> [(name, t, None)]
            | is -> axioms_replaced := true;
-                   List.mapi (fun i t' -> (name ^ "_inst" ^ string_of_int i, t')) is)
+                   List.map (fun t' -> (name, t', Some t)) is)
       named_axioms
   end
 
@@ -1120,7 +1121,10 @@ let init_problem termlist sigma termroles (kind,filename) st =
   Orderings.symbol_typings := Signature.all_uninterpreted_symbols sigma; (*FIXME hack -- might be better to store such info in state*)
   set_origproblem st termroles; (* destructive inserting *)
   set_origproblem_filename st filename; (* destructive inserting *)
-  set_origproblem_definitions st (defs_to_thf st.signature filename); (* destructive inserting *)
+  let definition_names = Hashtbl.find_all termroles "definition_name" in
+  let source_name t =
+    match List.assoc_opt t definition_names with Some (Term.Symbol n) -> n | _ -> t in
+  set_origproblem_definitions st (defs_to_thf ~source_name st.signature filename); (* destructive inserting *)
   set_origproblem_all_def_names st (all_defs_names st.signature); (* destructive inserting *)
   set_index st termlist; (* destructive inserting *)
   let named_axioms = ((Hashtbl.find_all termroles "axiom")@(Hashtbl.find_all termroles "assumption")@(Hashtbl.find_all termroles "hypothesis")@(Hashtbl.find_all termroles "lemma")) in
@@ -1132,7 +1136,26 @@ let init_problem termlist sigma termroles (kind,filename) st =
   let named_theorems = ((Hashtbl.find_all termroles "theorem")@(Hashtbl.find_all termroles "conjecture")@named_questions) in
   let named_axioms = instantiate_set_axioms st named_axioms named_theorems in
   let named_negated_conjectures = (Hashtbl.find_all termroles "negated_conjecture") in
-  let axiom_clauses_pre = (List.map (fun (name,term) -> mk_clause [ lit_mk_pos_literal st.signature (term2xterm term) ] (inc_clause_count st) [] (("axiom"),[],(kind^"('"^filename^"',"^name^")")) AXIOM st) named_axioms) in
+  let axiom_clause_numbered number name term =
+    mk_clause [ lit_mk_pos_literal st.signature (term2xterm term) ] number [] (("axiom"),[],(kind^"('"^filename^"',"^name^")")) AXIOM st in
+  let axiom_clause name term = axiom_clause_numbered (inc_clause_count st) name term in
+  (*An instance is derived from the axiom as the problem states it, so that a
+    proof names a formula of the problem as its leaf.  That clause is made for
+    the protocol only, never enters the search and takes no number from the
+    clause counter (see protocol_leaf_number).*)
+  let replaced = Hashtbl.create 4 in
+  let axiom_clauses_pre = (List.map (fun (name,term,orig) ->
+      match orig with
+          None -> axiom_clause name term
+        | Some orig_term ->
+            let parent =
+              try Hashtbl.find replaced name
+              with Not_found ->
+                let cl = axiom_clause_numbered (protocol_leaf_number name) name orig_term in
+                  Hashtbl.add replaced name cl; cl in
+            mk_clause [ lit_mk_pos_literal st.signature (term2xterm term) ] (inc_clause_count st) [] ("instantiate_sets",[(parent.cl_number,"")],"") AXIOM st)
+      named_axioms) in
+  let named_axioms = List.map (fun (name,term,_) -> (name,term)) named_axioms in
   let axiom_clauses = axiom_clauses_pre in
     (* (List.map (fun cl -> mk_clause (Array.to_list cl.cl_litarray) (inc_clause_count st) [] ("copy",[(cl.cl_number,"")],"") AXIOM st) axiom_clauses_pre) in *)
   let make_conjecture filename name theorem =

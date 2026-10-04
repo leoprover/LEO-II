@@ -93,6 +93,7 @@ val output_debug : string -> unit
 (** {6 Proof Protocol} *)
 
 val protocol_init : unit -> unit
+val protocol_leaf_number : string -> int
 
 val protocol_wanted : state -> bool
 val add_to_protocol : protocol -> state-> unit
